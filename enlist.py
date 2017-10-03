@@ -1,9 +1,13 @@
+# Enlist by Alexander Liao
+# Parts of this program are taken from Dennis's code for the Jelly programming language,
+# in compliance to the MIT license and with his additionally expressed permission
+
 codepage  = """................................ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¡"""
 codepage += """¢£¥§©«®°±¶·»¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ×ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö"""
 codepage += """÷øùúûüĀāĒēĪīŌōŒœŪūΠπ‘’‚“”„†‡•‰‹›€₱℅№™←↑→↓∆√∞≈≠≤≥★♪✓ıȷ⍺⍵⍶⍹......."""
 
-import re, math, operator, sympy, sys
+import re, math, operator, sympy, sys, locale
 
 def try_eval(string):
     try:
@@ -47,7 +51,7 @@ def foreachright(function):
 
 def vectorizeleft(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, *args):
-        if layers == maxlayers or layers == depth(args[0]) + maxlayer_offset or depth(args[0]) == 0:
+        if layers == maxlayers or layers == depth(args[0]) - maxlayer_offset or depth(args[0]) == 0:
             return function(*args)
         else:
             return [inner(layers + 1, *((element,) + args[1:])) for element in args[0]]
@@ -63,7 +67,7 @@ def vecmonad(function, maxlayers = -1, maxlayer_offset = 0):
 
 def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
-        if layers == maxlayers or layers == depth(right) + maxlayer_offset or depth(right) == 0:
+        if layers == maxlayers or layers == depth(right) - maxlayer_offset or depth(right) == 0:
             return function(left, right)
         else:
             return [inner(layers + 1, left, element) for element in right]
@@ -87,10 +91,23 @@ functions = {
     "_": (2, vecdyadboth(operator.sub)),
     "+": (2, vecdyadboth(operator.add)),
     "*": (2, vecdyadboth(operator.pow)),
+    "&": (2, vecdyadboth(operator.and_)),
+    "|": (2, vecdyadboth(operator.or_)),
+    "^": (2, vecdyadboth(operator.xor)),
+    "<": (2, vecdyadboth(operator.lt)),
+    "≤": (2, vecdyadboth(operator.le)),
+    "=": (2, operator.eq),
+    "e": (2, vecdyadboth(operator.eq)),
+    "n": (2, vecdyadboth(operator.ne)),
+    "≠": (2, operator.ne),
+    "≥": (2, vecdyadboth(operator.ge)),
+    ">": (2, vecdyadboth(operator.gt)),
     ",": (2, lambda x, y: [x, y]),
     "~": (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
     "!": (1, vecmonad(lambda x: math.gamma(x + 1))),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
+    "U": (1, vecmonad(lambda x: force_list(x)[::-1])),
+    "Ū": (1, lambda x: force_list(x)[::-1]),
     "⍺": (0, lambda: 0),
     "⍵": (0, lambda: 0),
 }
@@ -200,9 +217,12 @@ def tokenize(code):
         for matcher in matchers:
             token = matcher[1].match(code)
             if token:
-                tokens.append(matcher[2](token))
-                code = code[len(token.group()):]
-                break
+                try:
+                    tokens.append(matcher[2](token))
+                    code = code[len(token.group()):]
+                    break
+                except:
+                    pass
         else:
             code = code[1:]
     return tokens
@@ -341,5 +361,23 @@ def evaluate(tokens, arguments):
 def enlist_eval(code, arguments):
     return evaluate(preexecute(parse(tokenize(code))), arguments)
 
-def enlist_output(content, end):
-    print(content, end = end) # TODO
+def stringify(iterable, recurse = True):
+	  if type(iterable) != list:
+	     	return 1 if iterable is True else 0 if iterable is False else iterable
+	  if len(iterable) == 1:
+	   	  return stringify(iterable[0])
+	  if str in map(type, iterable) and not list in map(type, iterable) or not iterable:
+		    return ''.join(map(str, iterable))
+	  iterable = [stringify(item) for item in iterable]
+	  return stringify(iterable, False) if recurse else iterable
+
+def unicode_to_jelly(string):
+	return ''.join(chr(codepage.find(char)) for char in str(string).replace('\n', '¶') if char in codepage)
+
+def enlist_output(argument, end, transform = stringify):
+  	if locale.getdefaultlocale()[1][0:3] == 'UTF':
+	    	print(transform(argument), end = end)
+  	else:
+	    	print(unicode_to_jelly(transform(argument)), end = unicode_to_jelly(end))
+  	sys.stdout.flush()
+  	return argument
