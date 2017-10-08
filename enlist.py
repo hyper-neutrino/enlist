@@ -10,6 +10,9 @@ codepage += """÷øùúûüĀāĒēĪīŌōŒœŪūΠπ‘’‚“”„†‡�
 import re, math, operator, sympy, sys, locale
 
 def try_eval(string):
+    number = "([0-9]+|[0-9]*\.[0-9]+)"
+    if re.match("({0}j|{0}(\s*\+\s*{0}j)?)".format(number), string):
+        return eval(re.sub(number, r"sympy.Rational('\1')", string.replace("j", "*sympy\.I")))
     try:
         return eval(string)
     except:
@@ -51,7 +54,7 @@ def foreachright(function):
 
 def vectorizeleft(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, *args):
-        if layers == maxlayers or layers == depth(args[0]) - maxlayer_offset or depth(args[0]) == 0:
+        if layers == maxlayers or depth(args[0]) == maxlayer_offset or depth(args[0]) == 0:
             return function(*args)
         else:
             return [inner(layers + 1, *((element,) + args[1:])) for element in args[0]]
@@ -67,7 +70,7 @@ def vecmonad(function, maxlayers = -1, maxlayer_offset = 0):
 
 def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
-        if layers == maxlayers or layers == depth(right) - maxlayer_offset or depth(right) == 0:
+        if layers == maxlayers or depth(right) == maxlayer_offset or depth(right) == 0:
             return function(left, right)
         else:
             return [inner(layers + 1, left, element) for element in right]
@@ -80,17 +83,26 @@ def vecdyadboth(function, maxlayers = -1, maxlayer_offset = 0):
         if ldone and rdone:
             return function(left, right)
         elif ldone:
-            return [inner(layers + 1, left, element) for element in right]
+            return [inner(layers + 1, left, element) for element in right] + right[len(left):]
         elif rdone:
-            return [inner(layers + 1, element, right) for element in left]
+            return [inner(layers + 1, element, right) for element in left] + left[len(right):]
         else:
-            return [inner(layers + 1, eleft, eright) for eleft, eright in zip(left, right)]
+            return [inner(layers + 1, eleft, eright) for eleft, eright in zip(left, right)] + right[len(left):] + left[len(right):]
     return lambda left, right: inner(0, left, right)
+
+# ................................  "#   '     -./0123456789     ?
+#  ABCDEFGHIJKLMNOPQ ST VWXYZ \   `abcdefghijklmnopqrstuvwxyz    ¡
+# ¢£¥§©«®°± ·»¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö
+#  øùúûüĀāĒēĪīŌōŒœ ūΠπ‘’‚  „†‡•‰‹›  ℅№™←↑→↓∆√∞≈   ★♪✓    ⍶⍹......
 
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
     "+": (2, vecdyadboth(operator.add)),
     "*": (2, vecdyadboth(operator.pow)),
+    "×": (2, vecdyadboth(operator.mul)),
+    "÷": (2, vecdyadboth(operator.truediv)),
+    ":": (2, vecdyadboth(operator.floordiv)),
+    "%": (2, vecdyadboth(operator.mod)),
     "&": (2, vecdyadboth(operator.and_)),
     "|": (2, vecdyadboth(operator.or_)),
     "^": (2, vecdyadboth(operator.xor)),
@@ -106,10 +118,8 @@ functions = {
     "~": (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
     "!": (1, vecmonad(lambda x: math.gamma(x + 1))),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
-    "U": (1, vecmonad(lambda x: force_list(x)[::-1])),
+    "U": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "Ū": (1, lambda x: force_list(x)[::-1]),
-    "⍺": (0, lambda: 0),
-    "⍵": (0, lambda: 0),
 }
 
 operators = {
@@ -119,7 +129,7 @@ operators = {
     "₱": (-1, lambda fs: foreachright(fs.pop())),
 }
 
-overloads = ["[", "]", "(", ")", "{", "}"]
+overloads = ["[", "]", "(", ")", "{", "}", "⍺", "⍵"]
 
 def to_i(text):
     if text.startswith("-"):
@@ -158,7 +168,7 @@ slst = r"(“(([^“”]|\\.)*))+”"
 strn = r"“(([^“”]|\\.)*)”"
 char = r"”(.)"
 litr = "(" + "|".join([char, strn, slst, numr]) + ")"
-elst = r'\[*' + litr + r'(?:(?:\]*,\[*)' + litr + ')*' + r'\]*'
+elst = r"\[*" + litr + r"?(?:(?:\]*,\[*)" + litr + ")*" + r"\]*"
 func = "(" + "|".join(map(re.escape, functions)) + ")"
 oper = "(" + "|".join(map(re.escape, operators)) + ")"
 spec = "(" + "|".join(map(re.escape, overloads)) + ")"
@@ -207,7 +217,7 @@ matchers = [(m[0], re.compile(m[1]), m[2]) for m in [
     ("elst", elst, elstevalmatcher),
     ("func", func, lambda m: functions[m.group()]),
     ("oper", oper, lambda m: operators[m.group()]),
-    ("spec", spec, lambda m: (-1, m.group())),
+    ("spec", spec, lambda m: (-2, m.group())),
 ]]
 
 def tokenize(code):
@@ -256,7 +266,7 @@ def parse(tokens):
 def preexecute(tokens):
     func_stack = []
     for token in tokens:
-        if 0 <= token[0] <= 2:
+        if 0 <= token[0] <= 2 or token[0] == -2:
             func_stack.append(token)
         elif token[0] == -1:
             func_stack.append(token[1](func_stack))
@@ -264,84 +274,94 @@ def preexecute(tokens):
             raise RuntimeError("huh?")
     return func_stack
 
-def nileval(tokens):
-    if not isinstance(tokens, list): return nileval([tokens])
-    if tokens and tokens[0][0] == 0:
-        if isinstance(tokens[0][1], list):
-            value = nileval(tokens.pop(0)[1])
-        else:
-            value = tokens.pop(0)[1]()
+def nileval(tokens, layer = 0, nest = False):
+    if not isinstance(tokens, list): return nileval([tokens], layer = layer)
+    if tokens:
+        if tokens[0][0] == 0:
+            if isinstance(tokens[0][1], list):
+                value = nileval(tokens.pop(0)[1], layer = layer + 1, nest = True)
+            else:
+                value = tokens.pop(0)[1]()
+        elif tokens[0][0] == -2:
+            if tokens[0][1] == "⍺":
+                value = 100
+            elif tokens[0][1] == "⍵":
+                value = []
     else:
         value = 0
-    return moneval(tokens, value)
+    return moneval(tokens, value, layer = layer)
 
-def moneval(tokens, argument):
-    if not isinstance(tokens, list): return moneval([tokens], argument)
+def moneval(tokens, argument, layer = 0, nest = False):
+    if not isinstance(tokens, list): return moneval([tokens], argument, layer = layer)
+    if nest and tokens and not any(map(operator.itemgetter(0), tokens)):
+        values = [nileval([token], layer = layer + 1, nest = False) for token in tokens]
+        if argument in values: return values[(values.index(argument) + 1) % len(values)]
+        return argument
     if tokens and tokens[0][0] == 0:
-        value = nileval(tokens.pop(0))
+        value = nileval(tokens.pop(0), layer = layer)
     else:
         value = None
     while tokens:
         v = argument if value is None else value
         if len(tokens) >= 3 and tokens[0][0] == tokens[1][0] == 2 and tokens[2][0] == 0:
-            value = dydeval(tokens.pop(1), dydeval(tokens.pop(0), v, argument), nileval(tokens.pop(0)))
+            value = dydeval(tokens.pop(1), dydeval(tokens.pop(0), v, argument, layer), nileval(tokens.pop(0), layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 2 and tokens[1][0] == 1:
-            value = dydeval(tokens.pop(0), v, tokens.pop(0)[1](argument))
+            value = dydeval(tokens.pop(0), v, tokens.pop(0)[1](argument), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 2 and tokens[1][0] == 0:
-            value = dydeval(tokens.pop(0), v, nileval(tokens.pop(0)))
+            value = dydeval(tokens.pop(0), v, nileval(tokens.pop(0), layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 0 and tokens[1][0] == 2:
-            value = dydeval(tokens.pop(1), nileval(tokens.pop(0)), v)
+            value = dydeval(tokens.pop(1), nileval(tokens.pop(0), layer = layer), v, layer = layer)
         elif tokens[0][0] == 2:
             if isinstance(tokens[0][1], list):
-                value = dydeval(tokens.pop(0), v, argument)
+                value = dydeval(tokens.pop(0), v, argument, layer = layer + 1, nest = True)
             else:
                 value = tokens.pop(0)[1](v, argument)
         elif tokens[0][0] == 1:
             if isinstance(tokens[0][1], list):
-                value = moneval(tokens.pop(0)[1], v)
+                value = moneval(tokens.pop(0)[1], v, layer = layer + 1, nest = True)
             else:
                 value = tokens.pop(0)[1](v)
         else:
             if value is not None:
                 print(value, end = "")
-            value = nileval(tokens.pop(0))
+            value = nileval(tokens.pop(0), layer = layer)
     return argument if value is None else value
 
-def dydeval(tokens, left, right):
-    if not isinstance(tokens, list): return dydeval([tokens], left, right)
+def dydeval(tokens, left, right, layer = 0, nest = False):
+    if not isinstance(tokens, list): return dydeval([tokens], left, right, layer = layer)
     if len(tokens) >= 3 and tokens[0][0] == tokens[1][0] == tokens[2][0] == 2:
         if isinstance(tokens[0][1], list):
-            value = dydeval(tokens.pop(0)[1], left, right)
+            value = dydeval(tokens.pop(0)[1], left, right, layer = layer + 1, nest = True)
         else:
             value = tokens.pop(0)[1](left, right)
     elif tokens and tokens[0] == 0:
-        value = nileval(tokens.pop(0))
+        value = nileval(tokens.pop(0), layer = layer)
     else:
         value = None
     while tokens:
         v = left if value is None else value
         if len(tokens) >= 3 and tokens[0][0] == tokens[1][0] == 2 and tokens[2][0] == 0:
-            value = dydeval(tokens.pop(1), dydeval(tokens.pop(0), v, right), nileval(tokens.pop(0)))
+            value = dydeval(tokens.pop(1), dydeval(tokens.pop(0), v, right, layer = layer), nileval(tokens.pop(0), layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == tokens[1][0] == 2:
-            value = dydeval(tokens.pop(0), v, dydeval(tokens.pop(0), left, right))
+            value = dydeval(tokens.pop(0), v, dydeval(tokens.pop(0, layer = layer), left, right), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 2 and tokens[1][0] == 0:
-            value = dydeval(tokens.pop(0)[1], v, nileval(tokens.pop(0)))
+            value = dydeval(tokens.pop(0)[1], v, nileval(tokens.pop(0), layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 0 and tokens[1][0] == 2:
-            value = dydeval(tokens.pop(1), nileval(tokens.pop(0)[1]), v)
+            value = dydeval(tokens.pop(1), nileval(tokens.pop(0)[1], layer = layer), v, layer = layer)
         elif tokens[0][0] == 2:
             if isinstance(tokens[0][1], list):
-                value = dydeval(tokens.pop(0), v, right)
+                value = dydeval(tokens.pop(0), v, right, layer = layer + 1, nest = True)
             else:
                 value = tokens.pop(0)[1](v, right)
         elif tokens[0][0] == 1:
             if isinstance(tokens[0][1], list):
-                value = moneval(tokens.pop(0), v)
+                value = moneval(tokens.pop(0), v, layer = layer + 1, nest = True)
             else:
                 value = tokens.pop(0)[1](v)
         else:
             if value is not None:
                 enlist_output(value, "")
-            value = nileval(tokens.pop(0))
+            value = nileval(tokens.pop(0), layer = layer)
     return left if value is None else value
 
 
@@ -362,22 +382,22 @@ def enlist_eval(code, arguments):
     return evaluate(preexecute(parse(tokenize(code))), arguments)
 
 def stringify(iterable, recurse = True):
-	  if type(iterable) != list:
-	     	return 1 if iterable is True else 0 if iterable is False else iterable
-	  if len(iterable) == 1:
-	   	  return stringify(iterable[0])
-	  if str in map(type, iterable) and not list in map(type, iterable) or not iterable:
-		    return ''.join(map(str, iterable))
-	  iterable = [stringify(item) for item in iterable]
-	  return stringify(iterable, False) if recurse else iterable
+    if type(iterable) != list:
+         return 1 if iterable is True else 0 if iterable is False else iterable
+    if len(iterable) == 1:
+         return stringify(iterable[0])
+    if str in map(type, iterable) and not list in map(type, iterable) or not iterable:
+        return ''.join(map(str, iterable))
+    iterable = [stringify(item) for item in iterable]
+    return stringify(iterable, False) if recurse else iterable
 
 def unicode_to_jelly(string):
-	return ''.join(chr(codepage.find(char)) for char in str(string).replace('\n', '¶') if char in codepage)
+    return ''.join(chr(codepage.find(char)) for char in str(string).replace('\n', '¶') if char in codepage)
 
 def enlist_output(argument, end, transform = stringify):
-  	if locale.getdefaultlocale()[1][0:3] == 'UTF':
-	    	print(transform(argument), end = end)
-  	else:
-	    	print(unicode_to_jelly(transform(argument)), end = unicode_to_jelly(end))
-  	sys.stdout.flush()
-  	return argument
+    if locale.getdefaultlocale()[1][0:3] == 'UTF':
+        print(transform(argument), end = end)
+    else:
+        print(unicode_to_jelly(transform(argument)), end = unicode_to_jelly(end))
+    sys.stdout.flush()
+    return argument
