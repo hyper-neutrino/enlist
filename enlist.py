@@ -5,7 +5,7 @@
 codepage  = """................................ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¡"""
 codepage += """¢£¥§©«®°±¶·»¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ×ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö"""
-codepage += """÷øùúûüĀāĒēĪīŌōŒœŪūΠπ‘’‚“”„†‡•‰‹›€₱℅№™←↑→↓∆√∞≈≠≤≥★♪✓ıȷ⍺⍵⍶⍹......."""
+codepage += """÷øùúûüĀāĒēĪīŌōŒœŪūΠπ‘’“”„†‡•‰‹›€₱℅№™←↑→↓∆√∞≈≠≤≥★♪✓ıȷ⍺⍵⍶⍹........"""
 
 import re, math, operator, sympy, sys, locale
 
@@ -92,14 +92,24 @@ def vecdyadboth(function, maxlayers = -1, maxlayer_offset = 0):
             return [inner(layers + 1, eleft, eright) for eleft, eright in zip(left, right)] + right[len(left):] + left[len(right):]
     return lambda left, right: inner(0, left, right)
 
-# ................................  "#   '     -./0123456789     ?
+register = 0
+
+def registrar(function):
+    def inner(*args):
+        global register
+        register = function(*args)
+        return register
+    return inner
+
+# ................................  "#   '       /               ?
 #  ABCDEFGHIJKLMNOPQ ST VWXYZ \   `abcdefghijklmnopqrstuvwxyz    ¡
-# ¢£¥ ©«®°±  »¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö
-#  øùúûüĀāĒēĪīŌōŒœ ūΠπ‘’‚  „   ‰‹›  ℅№™←↑→↓∆√∞≈   ★♪✓    ⍶⍹.......
+# ¢£     °    ¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö
+#  øùúûüĀāĒēĪīŌōŒœ ūΠπ    „   ‰‹›  ℅№™←↑→↓  ∞≈   ★♪✓    ⍶⍹........
 
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
     "+": (2, vecdyadboth(operator.add)),
+    "±": (2, vecdyadboth(lambda x, y: [x + y, x - y]))
     "*": (2, vecdyadboth(operator.pow)),
     "×": (2, vecdyadboth(operator.mul)),
     "÷": (2, vecdyadboth(operator.truediv)),
@@ -116,20 +126,29 @@ functions = {
     "≠": (2, operator.ne),
     "≥": (2, vecdyadboth(operator.ge)),
     ">": (2, vecdyadboth(operator.gt)),
+    "»": (2, vecdyadboth(max)),
+    "«": (2, vecdyadboth(min)),
+    "®": (0, lambda: register),
     ",": (2, lambda x, y: [x, y]),
     "~": (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
+    "√": (1, vecmonad(sympy.sqrt)),
     "!": (1, vecmonad(lambda x: math.gamma(x + 1))),
     "·": (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
+    "‘": (1, vecmonad((-1).__add__)),
+    "’": (1, vecmonad(( 1).__add__)),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "U": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
+    "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
     "Ū": (1, lambda x: force_list(x)[::-1]),
 }
 
 operators = {
     "@": (-1, lambda fs: (2, reverse_args(fs.pop()[1]))),
     "$": (-1, lambda fs: (1, [fs.pop(), fs.pop()])),
+    "¥": (-1, lambda fs: (2, [fs.pop(), fs.pop()])),
     "€": (-1, lambda fs: foreachleft(fs.pop())),
     "₱": (-1, lambda fs: foreachright(fs.pop())),
+    "©": (-1, lambda fs: registrar(fs.pop())),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
@@ -167,8 +186,8 @@ real = r"(-?{d}?\.{d}?)".format(d = dgts)
 expn = r"{n}?ȷ{n}?".format(n = "({r}|{i})".format(r = real, i = intg))
 cmpx = r"{n}?ı{n}?".format(n = "({e}|{r}|{i})".format(e = expn, r = real, i = intg))
 numr = "(" + "|".join([cmpx, expn, real, intg]) + ")"
-slst = r"(“(([^“”]|\\.)*))+”"
-strn = r"“(([^“”]|\\.)*)”"
+slst = r"(“(([^“”‘’»]|\\.)*))+(”|‘|’|»)"
+strn = r"“(([^“”‘’»]|\\.)*)(”|‘|’|»)"
 char = r"”(.)"
 litr = "(" + "|".join([char, strn, slst, numr]) + ")"
 elst = r"\[*" + litr + r"?(?:(?:\]*,\[*)" + litr + ")*" + r"\]*"
@@ -176,8 +195,14 @@ func = "(" + "|".join(map(re.escape, functions)) + ")"
 oper = "(" + "|".join(map(re.escape, operators)) + ")"
 spec = "(" + "|".join(map(re.escape, overloads)) + ")"
 
-def str_eval(code):
-    return list(eval('"""%s"""' % code.replace('"', '\\"')))
+def str_eval(type):
+    type = "”‘’»".index(type)
+    if type == 0:
+        return lambda code: list(eval('"""%s"""' % code.replace('"', '\\"')))
+    if type == 1:
+        return lambda code: list(map(codepage.index, eval('"""%s"""' % code.replace('"', '\\"'))))
+    if type == 2:
+        return lambda code: (lambda str: sum(sympy.Integer(250) ** (len(str) - index - 1) * sympy.Integer(codepage.index(char) + 1) for index, char in enumerate(str)))(eval('"""%s"""' % code.replace('"', '\\"')))
 
 def evalyank(code):
     match = re.match(char, code)
@@ -185,10 +210,10 @@ def evalyank(code):
         return (match.group(), match.group()[1])
     match = re.match(strn, code)
     if match:
-        return (match.group(), str_eval(match.group()[1:-1]))
+        return (match.group(), str_eval(match.group()[-1])(match.group()[1:-1]))
     match = re.match(slst, code)
     if match:
-        return (match.group(), list(map(str_eval, re.split(r"(?<!\\)“", match.group()[1:-1]))))
+        return (match.group(), list(map(str_eval(match.group()[-1]), re.split(r"(?<!\\)“", match.group()[1:-1]))))
     match = re.match(numr, code)
     if match:
         return (match.group(), to_n(match.group()))
