@@ -11,10 +11,12 @@ import re, math, operator, sympy, sys, locale
 
 def try_eval(string):
     number = "([0-9]+|[0-9]*\.[0-9]+)"
-    if re.match("({0}j|{0}(\s*\+\s*{0}j)?)".format(number), string):
+    if re.match("^({0}j|{0}(\s*\+\s*{0}j)?)$".format(number), string):
         return eval(re.sub(number, r"sympy.Rational('\1')", string.replace("j", "*sympy\.I")))
     try:
-        return eval(string)
+        value = eval(string)
+        if hasattr(value, "__iter__"): return list(value)
+        return value
     except:
         return list(string)
 
@@ -54,7 +56,7 @@ def foreachright(function):
 
 def vectorizeleft(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, *args):
-        if layers == maxlayers or depth(args[0]) == maxlayer_offset or depth(args[0]) == 0:
+        if layers == maxlayers or depth(args[0]) == maxlayer_offset:
             return function(*args)
         else:
             return [inner(layers + 1, *((element,) + args[1:])) for element in args[0]]
@@ -78,8 +80,8 @@ def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
 
 def vecdyadboth(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
-        ldone = layers == maxlayers or layers == depth(left) + maxlayer_offset or depth(left) == 0
-        rdone = layers == maxlayers or layers == depth(right) + maxlayer_offset or depth(right) == 0
+        ldone = layers == maxlayers or depth(left) == maxlayer_offset
+        rdone = layers == maxlayers or depth(right) == maxlayer_offset
         if ldone and rdone:
             return function(left, right)
         elif ldone:
@@ -92,8 +94,8 @@ def vecdyadboth(function, maxlayers = -1, maxlayer_offset = 0):
 
 # ................................  "#   '     -./0123456789     ?
 #  ABCDEFGHIJKLMNOPQ ST VWXYZ \   `abcdefghijklmnopqrstuvwxyz    ¡
-# ¢£¥§©«®°± ·»¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö
-#  øùúûüĀāĒēĪīŌōŒœ ūΠπ‘’‚  „†‡•‰‹›  ℅№™←↑→↓∆√∞≈   ★♪✓    ⍶⍹......
+# ¢£¥ ©«®°±  »¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö
+#  øùúûüĀāĒēĪīŌōŒœ ūΠπ‘’‚  „   ‰‹›  ℅№™←↑→↓∆√∞≈   ★♪✓    ⍶⍹.......
 
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
@@ -117,6 +119,7 @@ functions = {
     ",": (2, lambda x, y: [x, y]),
     "~": (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
     "!": (1, vecmonad(lambda x: math.gamma(x + 1))),
+    "·": (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "U": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "Ū": (1, lambda x: force_list(x)[::-1]),
@@ -129,7 +132,7 @@ operators = {
     "₱": (-1, lambda fs: foreachright(fs.pop())),
 }
 
-overloads = ["[", "]", "(", ")", "{", "}", "⍺", "⍵"]
+overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
 
 def to_i(text):
     if text.startswith("-"):
@@ -237,7 +240,7 @@ def tokenize(code):
             code = code[1:]
     return tokens
 
-brackets = "[](){}"
+brackets = "•§†§‡§"
 
 def parse(tokens):
     result = []
@@ -387,17 +390,20 @@ def stringify(iterable, recurse = True):
     if len(iterable) == 1:
          return stringify(iterable[0])
     if str in map(type, iterable) and not list in map(type, iterable) or not iterable:
-        return ''.join(map(str, iterable))
+        return "".join(map(str, iterable))
     iterable = [stringify(item) for item in iterable]
     return stringify(iterable, False) if recurse else iterable
 
 def unicode_to_jelly(string):
-    return ''.join(chr(codepage.find(char)) for char in str(string).replace('\n', '¶') if char in codepage)
+    return "".join(chr(codepage.find(char)) for char in str(string).replace("\n", "¶") if char in codepage)
 
-def enlist_output(argument, end, transform = stringify):
-    if locale.getdefaultlocale()[1][0:3] == 'UTF':
+def enlist_output(argument, end = "\n", transform = stringify):
+    if locale.getdefaultlocale()[1][0:3] == "UTF":
         print(transform(argument), end = end)
     else:
         print(unicode_to_jelly(transform(argument)), end = unicode_to_jelly(end))
     sys.stdout.flush()
     return argument
+
+if __name__ == "__main__":
+    enlist_output(enlist_eval(input(), list(map(try_eval, sys.argv[1:]))))
