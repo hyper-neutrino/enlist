@@ -35,24 +35,34 @@ def depth(obj):
         return max(map(depth, obj)) + 1
     return 0
 
+def Operator(argnum):
+    class Inner:
+        def __init__(self, function):
+            self.function = function
+        def __call__(self, *args, **kwargs):
+            if isinstance(args[0], tuple): return self.function(*args, **kwargs)
+            return self.function((argnum, args[0]), *args[1:], **kwargs)
+    return Inner
+
+@Operator(2)
 def reverse_args(function):
-    return lambda x, y: function(y, x)
+    return lambda x, y: dydeval(function, y, x)
 
 def foreachleft(function):
     if function[0] == 0:
-        return (1, lambda inp: [function[1]() for val in range_list(inp)])
+        return (1, lambda inp: [nileval(function) for val in range_list(inp)])
     elif function[0] == 1:
-        return (1, lambda inp: [function[1](val) for val in range_list(inp)])
+        return (1, lambda inp: [moneval(function, val) for val in range_list(inp)])
     elif function[0] == 2:
-        return (2, lambda left, right: [function[1](val, right) for val in range_list(left)])
+        return (2, lambda left, right: [dydeval(function, val, right) for val in range_list(left)])
 
 def foreachright(function):
     if function[0] == 0:
-        return (2, lambda left, right: [function[1]() for val in range_list(right)])
+        return (2, lambda left, right: [nileval(function) for val in range_list(right)])
     elif function[0] == 1:
-        return (2, lambda left, right: [function[1](val) for val in range_list(right)])
+        return (2, lambda left, right: [moneval(function, val) for val in range_list(right)])
     elif function[0] == 2:
-        return (2, lambda left, right: [function[1](left, val) for val in range_list(right)])
+        return (2, lambda left, right: [dydeval(function, left, val) for val in range_list(right)])
 
 def vectorizeleft(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, *args):
@@ -78,16 +88,17 @@ def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
             return [inner(layers + 1, left, element) for element in right]
     return lambda left, right: inner(0, left, right)
 
+@Operator(2)
 def vecdyadboth(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
         ldone = layers == maxlayers or depth(left) == maxlayer_offset
         rdone = layers == maxlayers or depth(right) == maxlayer_offset
         if ldone and rdone:
-            return function(left, right)
+            return dydeval(function, left, right)
         elif ldone:
-            return [inner(layers + 1, left, element) for element in right] + right[len(left):]
+            return [inner(layers + 1, left, element) for element in right]
         elif rdone:
-            return [inner(layers + 1, element, right) for element in left] + left[len(right):]
+            return [inner(layers + 1, element, right) for element in left]
         else:
             return [inner(layers + 1, eleft, eright) for eleft, eright in zip(left, right)] + right[len(left):] + left[len(right):]
     return lambda left, right: inner(0, left, right)
@@ -143,7 +154,7 @@ functions = {
 }
 
 operators = {
-    "@": (-1, lambda fs: (2, reverse_args(fs.pop()[1]))),
+    "@": (-1, lambda fs: (2, reverse_args(fs.pop()))),
     "$": (-1, lambda fs: (1, [fs.pop(), fs.pop()])),
     "¥": (-1, lambda fs: (2, [fs.pop(), fs.pop()])),
     "€": (-1, lambda fs: foreachleft(fs.pop())),
@@ -302,8 +313,15 @@ def preexecute(tokens):
             raise RuntimeError("huh?")
     return func_stack
 
+class Evaluator:
+    def __init__(self, function):
+        self.function = function
+    def __call__(self, tokens, *args, **kwargs):
+        if isinstance(tokens, list): return self.function(tokens[:], *args, **kwargs)
+        else: return self.function([tokens], *args, **kwargs)
+
+@Evaluator
 def nileval(tokens, layer = 0, nest = False):
-    if not isinstance(tokens, list): return nileval([tokens], layer = layer)
     if tokens:
         if tokens[0][0] == 0:
             if isinstance(tokens[0][1], list):
@@ -319,8 +337,8 @@ def nileval(tokens, layer = 0, nest = False):
         value = 0
     return moneval(tokens, value, layer = layer)
 
+@Evaluator
 def moneval(tokens, argument, layer = 0, nest = False):
-    if not isinstance(tokens, list): return moneval([tokens], argument, layer = layer)
     if nest and tokens and not any(map(operator.itemgetter(0), tokens)):
         values = [nileval([token], layer = layer + 1, nest = False) for token in tokens]
         if argument in values: return values[(values.index(argument) + 1) % len(values)]
@@ -355,8 +373,8 @@ def moneval(tokens, argument, layer = 0, nest = False):
             value = nileval(tokens.pop(0), layer = layer)
     return argument if value is None else value
 
+@Evaluator
 def dydeval(tokens, left, right, layer = 0, nest = False):
-    if not isinstance(tokens, list): return dydeval([tokens], left, right, layer = layer)
     if len(tokens) >= 3 and tokens[0][0] == tokens[1][0] == tokens[2][0] == 2:
         if isinstance(tokens[0][1], list):
             value = dydeval(tokens.pop(0)[1], left, right, layer = layer + 1, nest = True)
