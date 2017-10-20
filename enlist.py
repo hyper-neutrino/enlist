@@ -109,7 +109,7 @@ def registrar(function):
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
     "+": (2, vecdyadboth(operator.add)),
-    "±": (2, vecdyadboth(lambda x, y: [x + y, x - y]))
+    "±": (2, vecdyadboth(lambda x, y: [x + y, x - y])),
     "*": (2, vecdyadboth(operator.pow)),
     "×": (2, vecdyadboth(operator.mul)),
     "÷": (2, vecdyadboth(operator.truediv)),
@@ -371,14 +371,14 @@ def dydeval(tokens, left, right, layer = 0, nest = False):
         if len(tokens) >= 3 and tokens[0][0] == tokens[1][0] == 2 and tokens[2][0] == 0:
             value = dydeval(tokens.pop(1), dydeval(tokens.pop(0), v, right, layer = layer), nileval(tokens.pop(0), layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == tokens[1][0] == 2:
-            value = dydeval(tokens.pop(0), v, dydeval(tokens.pop(0, layer = layer), left, right), layer = layer)
+            value = dydeval(tokens.pop(0), v, dydeval(tokens.pop(0), left, right, layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 2 and tokens[1][0] == 0:
             value = dydeval(tokens.pop(0)[1], v, nileval(tokens.pop(0), layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 0 and tokens[1][0] == 2:
             value = dydeval(tokens.pop(1), nileval(tokens.pop(0)[1], layer = layer), v, layer = layer)
         elif tokens[0][0] == 2:
             if isinstance(tokens[0][1], list):
-                value = dydeval(tokens.pop(0), v, right, layer = layer + 1, nest = True)
+                value = dydeval(tokens.pop(0)[1], v, right, layer = layer + 1, nest = True)
             else:
                 value = tokens.pop(0)[1](v, right)
         elif tokens[0][0] == 1:
