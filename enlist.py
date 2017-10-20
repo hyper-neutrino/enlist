@@ -126,7 +126,7 @@ def reducer(function, block_size = (0, lambda: 0)):
 
 # ¡¢£¤ ¦ ¬ µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ  "#   '()     /           ;   ?
 #  ABCDEFGHIJKLMNOPQ ST VWXYZ[\]  `abcd fghijklm opqrstuvwxyz{ }  
-# °  ³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾              ⍶⍹ĀāĒēĪīŌō ū  ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ
+# °         ⁺⁻⁼⁽⁾              ⍶⍹ĀāĒēĪīŌō ū  ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ
 # ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż      
 
 functions = {
@@ -161,6 +161,13 @@ functions = {
     "’": (1, vecmonad(( 1).__add__)),
     "¹": (1, lambda x: x),
     "²": (1, vecmonad(lambda x: x * x)),
+    "³": (0, lambda: 100),
+    "⁴": (0, lambda: 16),
+    "⁵": (0, lambda: 10),
+    "⁶": (0, lambda: " "),
+    "⁷": (0, lambda: "\n"),
+    "⁸": (0, lambda: []),
+    "⁹": (0, lambda: 256),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "U": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
@@ -463,4 +470,6 @@ def enlist_output(argument, end = "\n", transform = stringify):
     return argument
 
 if __name__ == "__main__":
+    for i in range(len(sys.argv) - 1):
+        functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, lambda: sys.argv[i + 1])
     enlist_output(enlist_eval(input(), list(map(try_eval, sys.argv[1:]))))
