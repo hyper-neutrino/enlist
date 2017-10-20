@@ -2,12 +2,12 @@
 # Parts of this program are taken from Dennis's code for the Jelly programming language,
 # in compliance to the MIT license and with his additionally expressed permission
 
-codepage  = """................................ !"#$%&'()*+,-./0123456789:;<=>?"""
-codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¡"""
-codepage += """¢£¥§©«®°±¶·»¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ×ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö"""
-codepage += """÷øùúûüĀāĒēĪīŌōŒœŪūΠπ‘’“”„†‡•‰‹›€₱℅№™←↑→↓∆√∞≈≠≤≥★♪✓ıȷ⍺⍵⍶⍹........"""
+codepage  = """¡¢£¤¥¦©¬®µ½¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
+codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶"""
+codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹ĀāĒēĪīŌōŪū  ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
+codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż«»‘’“”"""
 
-import re, math, operator, sympy, sys, locale
+import re, math, operator, sympy, sys, locale, functools
 
 def try_eval(string):
     number = "([0-9]+|[0-9]*\.[0-9]+)"
@@ -64,10 +64,11 @@ def foreachright(function):
     elif function[0] == 2:
         return (2, lambda left, right: [dydeval(function, left, val) for val in range_list(right)])
 
+@Operator(1)
 def vectorizeleft(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, *args):
         if layers == maxlayers or depth(args[0]) == maxlayer_offset:
-            return function(*args)
+            return [nileval, moneval, dydeval][len(args)](function, *args)
         else:
             return [inner(layers + 1, *((element,) + args[1:])) for element in args[0]]
     return inner
@@ -83,7 +84,7 @@ def vecmonad(function, maxlayers = -1, maxlayer_offset = 0):
 def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
         if layers == maxlayers or depth(right) == maxlayer_offset or depth(right) == 0:
-            return function(left, right)
+            return dydeval(function, left, right)
         else:
             return [inner(layers + 1, left, element) for element in right]
     return lambda left, right: inner(0, left, right)
@@ -108,14 +109,25 @@ register = 0
 def registrar(function):
     def inner(*args):
         global register
-        register = function(*args)
+        register = [nileval, moneval, dydeval][len(args)](function, *args)
         return register
     return inner
 
-# ................................  "#   '       /               ?
-#  ABCDEFGHIJKLMNOPQ ST VWXYZ \   `abcdefghijklmnopqrstuvwxyz    ¡
-# ¢£     °    ¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖ ØÙÚÛÜßàáâãäåæçèéêëìíîïñòóôõö
-#  øùúûüĀāĒēĪīŌōŒœ ūΠπ    „   ‰‹›  ℅№™←↑→↓  ∞≈   ★♪✓    ⍶⍹........
+@Operator(2)
+def reducer(function, block_size = (0, lambda: 0)):
+    def inner(argument):
+        argument = force_list(argument)
+        size = nileval(block_size)
+        if size == 0:
+            return functools.reduce(lambda x, y: dydeval(function, x, y), argument)
+        else:
+            raise RuntimeError("TODO: sized reduce not implemented yet")
+    return (1, inner)
+
+# ¡¢£¤ ¦ ¬ µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ  "#   '()     /           ;   ?
+#  ABCDEFGHIJKLMNOPQ ST VWXYZ[\]  `abcd fghijklm opqrstuvwxyz{ }  
+# °  ³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾              ⍶⍹ĀāĒēĪīŌō ū  ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ
+# ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż      
 
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
@@ -147,6 +159,8 @@ functions = {
     "·": (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
     "‘": (1, vecmonad((-1).__add__)),
     "’": (1, vecmonad(( 1).__add__)),
+    "¹": (1, lambda x: x),
+    "²": (1, vecmonad(lambda x: x * x)),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "U": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
@@ -160,8 +174,8 @@ operators = {
     "€": (-1, lambda fs: foreachleft(fs.pop())),
     "₱": (-1, lambda fs: foreachright(fs.pop())),
     "©": (-1, lambda fs: registrar(fs.pop())),
+    "/": (-1, lambda fs: reducer(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
 }
-
 overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
 
 def to_i(text):
@@ -391,9 +405,9 @@ def dydeval(tokens, left, right, layer = 0, nest = False):
         elif len(tokens) >= 2 and tokens[0][0] == tokens[1][0] == 2:
             value = dydeval(tokens.pop(0), v, dydeval(tokens.pop(0), left, right, layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 2 and tokens[1][0] == 0:
-            value = dydeval(tokens.pop(0)[1], v, nileval(tokens.pop(0), layer = layer), layer = layer)
+            value = dydeval(tokens.pop(0), v, nileval(tokens.pop(0), layer = layer), layer = layer)
         elif len(tokens) >= 2 and tokens[0][0] == 0 and tokens[1][0] == 2:
-            value = dydeval(tokens.pop(1), nileval(tokens.pop(0)[1], layer = layer), v, layer = layer)
+            value = dydeval(tokens.pop(1), nileval(tokens.pop(0), layer = layer), v, layer = layer)
         elif tokens[0][0] == 2:
             if isinstance(tokens[0][1], list):
                 value = dydeval(tokens.pop(0)[1], v, right, layer = layer + 1, nest = True)
@@ -401,7 +415,7 @@ def dydeval(tokens, left, right, layer = 0, nest = False):
                 value = tokens.pop(0)[1](v, right)
         elif tokens[0][0] == 1:
             if isinstance(tokens[0][1], list):
-                value = moneval(tokens.pop(0), v, layer = layer + 1, nest = True)
+                value = moneval(tokens.pop(0)[1], v, layer = layer + 1, nest = True)
             else:
                 value = tokens.pop(0)[1](v)
         else:
@@ -441,7 +455,7 @@ def unicode_to_jelly(string):
     return "".join(chr(codepage.find(char)) for char in str(string).replace("\n", "¶") if char in codepage)
 
 def enlist_output(argument, end = "\n", transform = stringify):
-    if locale.getdefaultlocale()[1][0:3] == "UTF":
+    if locale.getdefaultlocale()[1][:3] == "UTF":
         print(transform(argument), end = end)
     else:
         print(unicode_to_jelly(transform(argument)), end = unicode_to_jelly(end))
