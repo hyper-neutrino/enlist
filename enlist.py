@@ -158,7 +158,7 @@ def force_matrix(array):
     if depth(array) == 0: return [[array]]
 
 # ¡¢£¤ ¦   µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                     ?
-#  ABCDEFGHIJKLMNOP  STUVWXYZ[ ]  `abcd fghijklm opqrstuvwxyz{ }  
+#  ABCDEFGHIJKLMNOP  STUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz{ }  
 # °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚṢṬỤṾẈỴẒȦḂ
 # ĊḊĖḞĠḢİĿṀ ȮṖṘṠṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧḃċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
 
@@ -232,6 +232,7 @@ operators = {
     "/": (-1, lambda fs: reducer(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
     "\\":(-1, lambda fs: oreduce(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
     "\"":(-1, lambda fs: (2, vecdyadboth(fs.pop()))),
+    "`": (-1, lambda fs: (1, (lambda f: lambda x: dydeval(f, x, x))(fs.pop()))),
 }
 overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
 
