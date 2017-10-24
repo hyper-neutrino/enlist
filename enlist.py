@@ -1,10 +1,10 @@
 # Enlist by Alexander Liao
 # Parts of this program are taken from Dennis's code for the Jelly programming language,
-# in compliance to the MIT license and with his additionally expressed permission
+# in compliance to the MIT license and with his additionally expressed permission   
 
 codepage  = """¡¢£¤¥¦©¬®µ½¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶"""
-codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹ĀāĒēĪīŌōŪū  ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
+codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹←↑→↓↔↕↙↘↯↶↷↻ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż«»‘’“”"""
 
 import re, math, operator, sympy, sys, locale, functools
@@ -81,6 +81,7 @@ def vecmonad(function, maxlayers = -1, maxlayer_offset = 0):
     inner = vectorizeleft(function, maxlayers, maxlayer_offset)
     return lambda argument: inner(0, argument)
 
+@Operator(1)
 def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
         if layers == maxlayers or depth(right) == maxlayer_offset or depth(right) == 0:
@@ -121,13 +122,45 @@ def reducer(function, block_size = (0, lambda: 0)):
         if size == 0:
             return functools.reduce(lambda x, y: dydeval(function, x, y), argument)
         else:
-            raise RuntimeError("TODO: sized reduce not implemented yet")
+            return [functools.reduce(lambda x, y: dydeval(function, x, y), argument[i : i + size]) for i in range(0, len(argument), size)]
     return (1, inner)
 
-# ¡¢£¤ ¦ ¬ µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ  "#   '()     /           ;   ?
-#  ABCDEFGHIJKLMNOPQ ST VWXYZ[\]  `abcd fghijklm opqrstuvwxyz{ }  
-# °         ⁺⁻⁼⁽⁾              ⍶⍹ĀāĒēĪīŌō ū  ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ
-# ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż      
+@Operator(2)
+def oreduce(function, block_size = (0, lambda: 0)):
+    def inner(argument):
+        argument = force_list(argument)
+        size = nileval(block_size)
+        if size == 0:
+            output = []
+            while len(argument) > 1:
+                output.append(dydeval(function, *argument[:2]))
+                argument[:2] = output[-1:]
+            return output + argument
+        else:
+            return [functools.reduce(lambda x, y: dydeval(function, x, y), argument[i : i + size]) for i in range(0, len(argument) - size)]
+    return (1, inner)
+
+def rotater(scale, layer):
+    def inner(array, distance):
+        if layer == 0 or depth(array) == 1:
+            distance *= scale
+            if distance > 0: return array[-distance:] + array[:-distance]
+            if distance < 0: return array[ distance:] + array[: distance]
+            return array
+        else:
+            next = rotater(scale, layer - 1)
+            return [next(row, distance) for row in array]
+    return inner
+
+def force_matrix(array):
+    if depth(array) >= 2: return   array
+    if depth(array) == 1: return  [array]
+    if depth(array) == 0: return [[array]]
+
+# ¡¢£¤ ¦   µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                     ?
+#  ABCDEFGHIJKLMNOP  STUVWXYZ[ ]  `abcd fghijklm opqrstuvwxyz{ }  
+# °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚṢṬỤṾẈỴẒȦḂ
+# ĊḊĖḞĠḢİĿṀ ȮṖṘṠṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧḃċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
 
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
@@ -153,6 +186,7 @@ functions = {
     "«": (2, vecdyadboth(min)),
     "®": (0, lambda: register),
     ",": (2, lambda x, y: [x, y]),
+    ";": (2, lambda x, y: force_list(x) + force_list(y)),
     "~": (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
     "√": (1, vecmonad(sympy.sqrt)),
     "!": (1, vecmonad(lambda x: math.gamma(x + 1))),
@@ -168,10 +202,24 @@ functions = {
     "⁷": (0, lambda: "\n"),
     "⁸": (0, lambda: []),
     "⁹": (0, lambda: 256),
+    "Q": (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
-    "U": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
+    "S": reducer(vecdyadboth(operator.add)),
+    "↔": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
-    "Ū": (1, lambda x: force_list(x)[::-1]),
+    "↕": (1, lambda x: force_list(x)[::-1]),
+    "←": (2, rotater(-1, 1)),
+    "→": (2, rotater(+1, 1)),
+    "↑": (2, rotater(-1, 0)),
+    "↓": (2, rotater(+1, 0)),
+    "¬": (1, vecmonad(lambda x: int(not x))),
+    "ė": (2, lambda x, y: int(x in force_list(y))),
+    "ẹ": (2, lambda x, y: int(x not in force_list(y))),
+    "↙": (1, lambda x: list(map(list, zip(*force_matrix(x))))),
+    "↘": (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))[::-1]),
+    "↶": (1, lambda x: list(map(list, zip(*force_matrix(x))))[::-1]),
+    "↷": (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))),
+    "↻": (1, lambda x: [y[::-1] for y in force_matrix(x)[::-1]]),
 }
 
 operators = {
@@ -182,6 +230,8 @@ operators = {
     "₱": (-1, lambda fs: foreachright(fs.pop())),
     "©": (-1, lambda fs: registrar(fs.pop())),
     "/": (-1, lambda fs: reducer(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
+    "\\":(-1, lambda fs: oreduce(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
+    "\"":(-1, lambda fs: (2, vecdyadboth(fs.pop()))),
 }
 overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
 
@@ -470,6 +520,7 @@ def enlist_output(argument, end = "\n", transform = stringify):
     return argument
 
 if __name__ == "__main__":
-    for i in range(len(sys.argv) - 1):
-        functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, lambda: sys.argv[i + 1])
-    enlist_output(enlist_eval(input(), list(map(try_eval, sys.argv[1:]))))
+    args = list(map(try_eval, sys.argv[1:]))
+    for i in range(len(args)):
+        functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, lambda: args[i])
+    enlist_output(enlist_eval(input(), args))
