@@ -12,7 +12,7 @@ import re, math, operator, sympy, sys, locale, functools
 def try_eval(string):
     number = "([0-9]+|[0-9]*\.[0-9]+)"
     if re.match("^({0}j|{0}(\s*\+\s*{0}j)?)$".format(number), string):
-        return eval(re.sub(number, r"sympy.Rational('\1')", string.replace("j", "*sympy\.I")))
+        return eval(re.sub(number, r"sympy.Rational('\1')", string.replace("j", "*sympy.I")))
     try:
         value = eval(string)
         if hasattr(value, "__iter__"): return list(value)
@@ -32,6 +32,7 @@ def range_list(obj):
 
 def depth(obj):
     if hasattr(obj, "__iter__"):
+        if len(obj) == 0: return 1
         return max(map(depth, obj)) + 1
     return 0
 
@@ -157,8 +158,27 @@ def force_matrix(array):
     if depth(array) == 1: return  [array]
     if depth(array) == 0: return [[array]]
 
-# ¡¢£¤ ¦   µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                     ?
-#  ABCDEFGHIJKLMNOP  STUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz{ }  
+def flatten(array):
+    if depth(array) <= 1: return array
+    result = []
+    for element in array:
+        result += force_list(element)
+    return flatten(result)
+
+def ternary(c, f, t):
+    # if f[0] != t[0]: raise RuntimeError("Ternary clauses must have same arity")
+    def inner(*args):
+        if c[0] == 0: v = nileval(c)
+        if c[0] == 1: v = moneval(c, args[0])
+        if c[0] == 2: v = dydeval(c, *args)
+        k = [f, t][bool(v)]
+        if k[0] == 0: return nileval(k)
+        if k[0] == 1: return moneval(k, args[0])
+        if k[0] == 2: return dydeval(k, *args)
+    return (max(c[0], t[0], f[0]), inner)
+
+# ¡¢£¤ ¦   µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
+#  ABCDE GHIJKLMNOP  STUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
 # °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚṢṬỤṾẈỴẒȦḂ
 # ĊḊĖḞĠḢİĿṀ ȮṖṘṠṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧḃċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
 
@@ -202,6 +222,7 @@ functions = {
     "⁷": (0, lambda: "\n"),
     "⁸": (0, lambda: []),
     "⁹": (0, lambda: 256),
+    "F": (1, lambda x: flatten(x)),
     "Q": (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "S": reducer(vecdyadboth(operator.add)),
@@ -233,31 +254,34 @@ operators = {
     "\\":(-1, lambda fs: oreduce(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
     "\"":(-1, lambda fs: (2, vecdyadboth(fs.pop()))),
     "`": (-1, lambda fs: (1, (lambda f: lambda x: dydeval(f, x, x))(fs.pop()))),
+    "{": (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, x))(fs.pop()))),
+    "}": (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, y))(fs.pop()))),
+    "?": (-1, lambda fs: ternary(fs.pop(), fs.pop(), fs.pop())),
 }
 overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
 
 def to_i(text):
     if text.startswith("-"):
-        return -to_i(text[1:])
+        return "-" + to_i(text[1:])
     elif text == "":
-        return 1
+        return "sympy.Integer(1)"
     else:
-        return sympy.Integer(text)
+        return "sympy.Integer(" + repr(text) + ")"
 
 def to_r(text):
     if text.startswith("-"):
-        return -to_r(text[1:])
+        return "-" + to_r(text[1:])
     else:
         left, right = text.split(".")
-        return sympy.Rational((left or "0") + "." + (right or "5"))
+        return "sympy.Rational(" + repr((left or "0") + "." + (right or "5")) + ")"
 
 def to_n(text):
     if "ı" in text:
         left, right = text.split("ı", 1)
-        return to_n(left or "0") + sympy.I * to_n(right or "1")
+        return to_n(left or "0") + "sympy.I*" + to_n(right or "1")
     elif "ȷ" in text:
         left, right = text.split("ȷ", 1)
-        return to_n(left or "1") * 10 ** to_n(right or "3")
+        return to_n(left or "1") + "*10**" + to_n(right or "3")
     elif "." in text:
         return to_r(text)
     else:
@@ -312,7 +336,7 @@ def elsteval(code):
     while code:
         yanked = evalyank(code)
         if yanked:
-            raw += repr(yanked[1]) + " "
+            raw += yanked[1] + " "
             code = code[len(yanked[0]):]
         else:
             raw += code[0]
@@ -405,6 +429,10 @@ def nileval(tokens, layer = 0, nest = False):
                 value = 100
             elif tokens[0][1] == "⍵":
                 value = []
+            else:
+                value = 0
+        else:
+            value = 0
     else:
         value = 0
     return moneval(tokens, value, layer = layer)
