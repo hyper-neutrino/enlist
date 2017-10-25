@@ -177,8 +177,13 @@ def ternary(c, f, t):
         if k[0] == 2: return dydeval(k, *args)
     return (max(c[0], t[0], f[0]), inner)
 
+def factorial(num):
+    r = sympy.Integer(1)
+    for i in range(2, num + 1): r *= i
+    return r
+
 # ¡¢£¤ ¦   µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
-#  ABCDE GHIJKLMNOP  STUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
+#  ABCDE GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
 # °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚṢṬỤṾẈỴẒȦḂ
 # ĊḊĖḞĠḢİĿṀ ȮṖṘṠṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧḃċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
 
@@ -222,12 +227,15 @@ functions = {
     "⁷": (0, lambda: "\n"),
     "⁸": (0, lambda: []),
     "⁹": (0, lambda: 256),
+    "!": (1, lambda x: factorial(x) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1))),
     "F": (1, lambda x: flatten(x)),
+    "P": reducer(vecdyadboth(operator.mul)),
     "Q": (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "S": reducer(vecdyadboth(operator.add)),
     "↔": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
+    "Æ∆":(1, lambda x: (x + 1) * x / 2),
     "↕": (1, lambda x: force_list(x)[::-1]),
     "←": (2, rotater(-1, 1)),
     "→": (2, rotater(+1, 1)),
