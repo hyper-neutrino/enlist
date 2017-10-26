@@ -2,7 +2,7 @@
 # Parts of this program are taken from Dennis's code for the Jelly programming language,
 # in compliance to the MIT license and with his additionally expressed permission   
 
-codepage  = """¡¢£¤¥¦©¬®µ½¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
+codepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶"""
 codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹←↑→↓↔↕↙↘↯↶↷↻ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż«»‘’“”"""
@@ -182,10 +182,35 @@ def factorial(num):
     for i in range(2, num + 1): r *= i
     return r
 
-# ¡¢£¤ ¦   µ½¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
-#  ABCDE GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
-# °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚṢṬỤṾẈỴẒȦḂ
-# ĊḊĖḞĠḢİĿṀ ȮṖṘṠṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧḃċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
+def digits(integer, base, bijective = False): # Taken directly from Jelly
+    if integer == 0:
+        return [0] * (not bijective)
+    if bijective:
+        base = abs(base)
+    if base == 0:
+        return [integer]
+    if base == -1:
+        digits = [1, 0] * abs(integer)
+        return digits[:-1] if integer > 0 else digits
+    sign = -1 if integer < 0 and base > 0 else 1
+    integer *= sign
+    if base == 1:
+        return [sign] * integer
+    digits = []
+    while integer:
+        integer -= bijective
+        integer, digit = divmod(integer, base)
+        digit += bijective
+        if digit < 0:
+            integer += 1
+            digit -= base
+        digits.append(sign * digit)
+    return digits[::-1]
+
+# ¡¢£¤ ¦   µ ¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
+#   BC E GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
+# °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
+# ĊḊĖḞĠḢİĿṀ ȮṖṘ ṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧ ċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
 
 functions = {
     "_": (2, vecdyadboth(operator.sub)),
@@ -220,19 +245,28 @@ functions = {
     "’": (1, vecmonad(( 1).__add__)),
     "¹": (1, lambda x: x),
     "²": (1, vecmonad(lambda x: x * x)),
-    "³": (0, lambda: 100),
-    "⁴": (0, lambda: 16),
-    "⁵": (0, lambda: 10),
-    "⁶": (0, lambda: " "),
-    "⁷": (0, lambda: "\n"),
+    "³": (0, lambda: sympy.Integer(100)),
+    "⁴": (0, lambda: sympy.Integer(16)),
+    "⁵": (0, lambda: sympy.Integer(10)),
+    "⁶": (0, lambda: [" "]),
+    "⁷": (0, lambda: ["\n"]),
     "⁸": (0, lambda: []),
-    "⁹": (0, lambda: 256),
-    "!": (1, lambda x: factorial(x) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1))),
+    "⁹": (0, lambda: sympy.Integer(256)),
+    "⍺": (0, lambda: sympy.Rational("0.1")),
+    "⍵": (0, lambda: 1), # TODO
+    "π": (0, lambda: sympy.pi),
+    "!": (1, lambda x: (-1 if x < 0 else 1) * (actorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
+    "A": (1, vecmonad(abs)),
+    "B": (1, vecmonad(lambda x: digits(x, 2))),
+    "D": (1, vecmonad(lambda x: digits(x, 10))),
     "F": (1, lambda x: flatten(x)),
+    "H": (1, vecmonad(lambda x: digits(x, 16))),
     "P": reducer(vecdyadboth(operator.mul)),
     "Q": (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
     "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "S": reducer(vecdyadboth(operator.add)),
+    "Ṣ": (1, sorted),
+    "Ṡ": (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
     "↔": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
     "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
     "Æ∆":(1, lambda x: (x + 1) * x / 2),
@@ -241,7 +275,9 @@ functions = {
     "→": (2, rotater(+1, 1)),
     "↑": (2, rotater(-1, 0)),
     "↓": (2, rotater(+1, 0)),
-    "¬": (1, vecmonad(lambda x: int(not x))),
+    "¬": (1, vecmonad(lambda x: not x)),
+    "b": (2, vecdyadboth(lambda x, y: digits(x, y))),
+    "ḃ": (2, vecdyadboth(lambda x, y: digits(x, y, bijective = True))),
     "ė": (2, lambda x, y: int(x in force_list(y))),
     "ẹ": (2, lambda x, y: int(x not in force_list(y))),
     "↙": (1, lambda x: list(map(list, zip(*force_matrix(x))))),
@@ -266,7 +302,8 @@ operators = {
     "}": (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, y))(fs.pop()))),
     "?": (-1, lambda fs: ternary(fs.pop(), fs.pop(), fs.pop())),
 }
-overloads = ["•", "§", "†", "§", "‡", "§", "⍺", "⍵"]
+
+overloads = ["•", "§", "†", "§", "‡", "§"]
 
 def to_i(text):
     if text.startswith("-"):
@@ -286,7 +323,7 @@ def to_r(text):
 def to_n(text):
     if "ı" in text:
         left, right = text.split("ı", 1)
-        return to_n(left or "0") + "sympy.I*" + to_n(right or "1")
+        return to_n(left or "0") + "+sympy.I*" + to_n(right or "1")
     elif "ȷ" in text:
         left, right = text.split("ȷ", 1)
         return to_n(left or "1") + "*10**" + to_n(right or "3")
@@ -367,11 +404,13 @@ def tokenize(code):
     code = "".join(char for char in code.replace("\n", "¶") if char in codepage)
     tokens = []
     while code:
+        tokens = tokens or [[]]
+        if code[0] == "¶": tokens.append([]); code = code[1:]; continue
         for matcher in matchers:
             token = matcher[1].match(code)
             if token:
                 try:
-                    tokens.append(matcher[2](token))
+                    tokens[-1].append(matcher[2](token))
                     code = code[len(token.group()):]
                     break
                 except:
@@ -425,7 +464,7 @@ class Evaluator:
         else: return self.function([tokens], *args, **kwargs)
 
 @Evaluator
-def nileval(tokens, layer = 0, nest = False):
+def nileval(tokens, layer = 0, nest = False, links = [], index = -1):
     if tokens:
         if tokens[0][0] == 0:
             if isinstance(tokens[0][1], list):
@@ -433,12 +472,7 @@ def nileval(tokens, layer = 0, nest = False):
             else:
                 value = tokens.pop(0)[1]()
         elif tokens[0][0] == -2:
-            if tokens[0][1] == "⍺":
-                value = 100
-            elif tokens[0][1] == "⍵":
-                value = []
-            else:
-                value = 0
+            value = 0
         else:
             value = 0
     else:
@@ -446,7 +480,7 @@ def nileval(tokens, layer = 0, nest = False):
     return moneval(tokens, value, layer = layer)
 
 @Evaluator
-def moneval(tokens, argument, layer = 0, nest = False):
+def moneval(tokens, argument, layer = 0, nest = False, links = [], index = -1):
     if nest and tokens and not any(map(operator.itemgetter(0), tokens)):
         values = [nileval([token], layer = layer + 1, nest = False) for token in tokens]
         if argument in values: return values[(values.index(argument) + 1) % len(values)]
@@ -482,7 +516,7 @@ def moneval(tokens, argument, layer = 0, nest = False):
     return argument if value is None else value
 
 @Evaluator
-def dydeval(tokens, left, right, layer = 0, nest = False):
+def dydeval(tokens, left, right, layer = 0, nest = False, links = [], index = -1):
     if len(tokens) >= 3 and tokens[0][0] == tokens[1][0] == tokens[2][0] == 2:
         if isinstance(tokens[0][1], list):
             value = dydeval(tokens.pop(0)[1], left, right, layer = layer + 1, nest = True)
@@ -519,21 +553,22 @@ def dydeval(tokens, left, right, layer = 0, nest = False):
     return left if value is None else value
 
 
-def evaluate(tokens, arguments):
+def evaluate(links, arguments):
+    link = links[-1]
     if len(arguments) >= 1:
         functions["⍺"] = (0, lambda: arguments[0])
     if len(arguments) >= 2:
         functions["⍵"] = (0, lambda: arguments[1])
     # TODO other argument getters
     if len(arguments) >= 2:
-        return dydeval(tokens, arguments[0], arguments[1])
+        return dydeval(link, arguments[0], arguments[1], links = links, index = len(links) - 1)
     elif len(arguments) == 1:
-        return moneval(tokens, arguments[0])
+        return moneval(link, arguments[0], links = links, index = len(links) - 1)
     else:
-        return nileval(tokens)
+        return nileval(link, links = links, index = len(links) - 1)
 
 def enlist_eval(code, arguments):
-    return evaluate(preexecute(parse(tokenize(code))), arguments)
+    return evaluate(list(map(preexecute, map(parse, tokenize(code)))), arguments)
 
 def stringify(iterable, recurse = True):
     if type(iterable) != list:
