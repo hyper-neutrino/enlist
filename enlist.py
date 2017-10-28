@@ -4,7 +4,7 @@
 
 codepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶"""
-codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹←↑→↓↔↕↙↘↯↶↷↻ẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
+codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹←↑→↓↔↕↙↘↶↷↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż«»‘’“”"""
 
 import re, math, operator, sympy, sys, locale, functools
@@ -39,11 +39,11 @@ def digit_lister(function, base = 10):
     return inner
 
 def lfill(matrix, item):
-    length = map(map(len, matrix))
+    length = max(map(len, matrix))
     return [row + [item] * (length - len(row)) for row in matrix]
 
 def rfill(matrix, item):
-    length = map(map(len, matrix))
+    length = max(map(len, matrix))
     return [[item] * (length - len(row)) + row for row in matrix]
 
 def depth(obj):
@@ -98,7 +98,7 @@ def vecmonad(function, maxlayers = -1, maxlayer_offset = 0):
     inner = vectorizeleft(function, maxlayers, maxlayer_offset)
     return lambda argument: inner(0, argument)
 
-@Operator(1)
+@Operator(2)
 def vecdyadright(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, left, right):
         if layers == maxlayers or depth(right) == maxlayer_offset or depth(right) == 0:
@@ -231,9 +231,9 @@ def from_base(digits, base):
     return num
 
 # ¡¢£¤ ¦   µ ¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
-#   BC E GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
-# °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
-# ĊḊĖḞĠḢİĿṀ ȮṖṘ ṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧ ċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
+#   BC E GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxy      
+# °         ⁺⁻⁼⁽⁾              ⍶⍹           λẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
+# ĊḊĖḞĠḢİĿṀ ȮṖṘ ṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵ ȧ ċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏ       
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -278,7 +278,7 @@ functions = {
     "⍺":  (0, lambda: sympy.Rational("0.1")),
     "⍵":  (0, lambda: 1), # TODO
     "π":  (0, lambda: sympy.pi),
-    "!":  (1, lambda x: (-1 if x < 0 else 1) * (actorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
+    "!":  (1, lambda x: (-1 if x < 0 else 1) * (factorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
     "A":  (1, vecmonad(abs)),
     "B":  (1, vecmonad(lambda x: digits(x, 2))),
     "D":  (1, vecmonad(lambda x: digits(x, 10))),
@@ -303,6 +303,10 @@ functions = {
     "ḃ":  (2, vecdyadboth(lambda x, y: digits(x, y, bijective = True))),
     "ė":  (2, lambda x, y: int(x in force_list(y))),
     "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
+    "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
+    "z":  (2, lambda x, y: list(map(list, zip(*lfill(x, y))))),
+    "ż":  (2, lambda x, y: (lambda a, b: [([a[i]] if i < len(a) else []) + ([b[i]] if i < len(b) else []) for i in range(max(len(a), len(b)))])(force_list(x), force_list(y))),
+    "ẓ":  (2, lambda x, y: list(map(list, zip(force_list(x), force_list(y))))),
     "↙":  (1, lambda x: list(map(list, zip(*force_matrix(x))))),
     "↘":  (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))[::-1]),
     "↶":  (1, lambda x: list(map(list, zip(*force_matrix(x))))[::-1]),
