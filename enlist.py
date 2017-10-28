@@ -381,7 +381,7 @@ def elsteval(code):
     while code:
         yanked = evalyank(code)
         if yanked:
-            raw += yanked[1] + " "
+            raw += repr(yanked[1]) + " "
             code = code[len(yanked[0]):]
         else:
             raw += code[0]
