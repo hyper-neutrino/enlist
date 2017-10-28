@@ -30,6 +30,22 @@ def range_list(obj):
         return obj
     return list(range(obj))
 
+def digit_lister(function, base = 10):
+    def inner(obj):
+        if hasattr(obj, "__iter__"):
+            return function(obj)
+        else:
+            return from_base(function(digits(obj, base)), base)
+    return inner
+
+def lfill(matrix, item):
+    length = map(map(len, matrix))
+    return [row + [item] * (length - len(row)) for row in matrix]
+
+def rfill(matrix, item):
+    length = map(map(len, matrix))
+    return [[item] * (length - len(row)) + row for row in matrix]
+
 def depth(obj):
     if hasattr(obj, "__iter__"):
         if len(obj) == 0: return 1
@@ -68,7 +84,7 @@ def foreachright(function):
 @Operator(1)
 def vectorizeleft(function, maxlayers = -1, maxlayer_offset = 0):
     def inner(layers, *args):
-        if layers == maxlayers or depth(args[0]) == maxlayer_offset:
+        if layers == maxlayers or depth(args[0]) in [maxlayer_offset, 0]:
             return [nileval, moneval, dydeval][len(args)](function, *args)
         else:
             return [inner(layers + 1, *((element,) + args[1:])) for element in args[0]]
@@ -207,100 +223,109 @@ def digits(integer, base, bijective = False): # Taken directly from Jelly
         digits.append(sign * digit)
     return digits[::-1]
 
+def from_base(digits, base):
+    num = sympy.Integer(0)
+    for digit in digits:
+        num *= base
+        num += digit
+    return num
+
 # ¡¢£¤ ¦   µ ¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
 #   BC E GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxyz     
 # °         ⁺⁻⁼⁽⁾              ⍶⍹        ↯   ẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
 # ĊḊĖḞĠḢİĿṀ ȮṖṘ ṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵẓȧ ċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏż      
 
 functions = {
-    "_": (2, vecdyadboth(operator.sub)),
-    "+": (2, vecdyadboth(operator.add)),
-    "±": (2, vecdyadboth(lambda x, y: [x + y, x - y])),
-    "*": (2, vecdyadboth(operator.pow)),
-    "×": (2, vecdyadboth(operator.mul)),
-    "÷": (2, vecdyadboth(operator.truediv)),
-    ":": (2, vecdyadboth(operator.floordiv)),
-    "%": (2, vecdyadboth(operator.mod)),
-    "&": (2, vecdyadboth(operator.and_)),
-    "|": (2, vecdyadboth(operator.or_)),
-    "^": (2, vecdyadboth(operator.xor)),
-    "<": (2, vecdyadboth(operator.lt)),
-    "≤": (2, vecdyadboth(operator.le)),
-    "=": (2, operator.eq),
-    "e": (2, vecdyadboth(operator.eq)),
-    "n": (2, vecdyadboth(operator.ne)),
-    "≠": (2, operator.ne),
-    "≥": (2, vecdyadboth(operator.ge)),
-    ">": (2, vecdyadboth(operator.gt)),
-    "»": (2, vecdyadboth(max)),
-    "«": (2, vecdyadboth(min)),
-    "®": (0, lambda: register),
-    ",": (2, lambda x, y: [x, y]),
-    ";": (2, lambda x, y: force_list(x) + force_list(y)),
-    "~": (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
-    "√": (1, vecmonad(sympy.sqrt)),
-    "!": (1, vecmonad(lambda x: math.gamma(x + 1))),
-    "·": (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
-    "‘": (1, vecmonad((-1).__add__)),
-    "’": (1, vecmonad(( 1).__add__)),
-    "¹": (1, lambda x: x),
-    "²": (1, vecmonad(lambda x: x * x)),
-    "³": (0, lambda: sympy.Integer(100)),
-    "⁴": (0, lambda: sympy.Integer(16)),
-    "⁵": (0, lambda: sympy.Integer(10)),
-    "⁶": (0, lambda: [" "]),
-    "⁷": (0, lambda: ["\n"]),
-    "⁸": (0, lambda: []),
-    "⁹": (0, lambda: sympy.Integer(256)),
-    "⍺": (0, lambda: sympy.Rational("0.1")),
-    "⍵": (0, lambda: 1), # TODO
-    "π": (0, lambda: sympy.pi),
-    "!": (1, lambda x: (-1 if x < 0 else 1) * (actorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
-    "A": (1, vecmonad(abs)),
-    "B": (1, vecmonad(lambda x: digits(x, 2))),
-    "D": (1, vecmonad(lambda x: digits(x, 10))),
-    "F": (1, lambda x: flatten(x)),
-    "H": (1, vecmonad(lambda x: digits(x, 16))),
-    "P": reducer(vecdyadboth(operator.mul)),
-    "Q": (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
-    "R": (1, vecmonad(lambda x: list(range(1, x + 1)))),
-    "S": reducer(vecdyadboth(operator.add)),
-    "Ṣ": (1, sorted),
-    "Ṡ": (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
-    "↔": (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
-    "∆": (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
-    "Æ∆":(1, lambda x: (x + 1) * x / 2),
-    "↕": (1, lambda x: force_list(x)[::-1]),
-    "←": (2, rotater(-1, 1)),
-    "→": (2, rotater(+1, 1)),
-    "↑": (2, rotater(-1, 0)),
-    "↓": (2, rotater(+1, 0)),
-    "¬": (1, vecmonad(lambda x: not x)),
-    "b": (2, vecdyadboth(lambda x, y: digits(x, y))),
-    "ḃ": (2, vecdyadboth(lambda x, y: digits(x, y, bijective = True))),
-    "ė": (2, lambda x, y: int(x in force_list(y))),
-    "ẹ": (2, lambda x, y: int(x not in force_list(y))),
-    "↙": (1, lambda x: list(map(list, zip(*force_matrix(x))))),
-    "↘": (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))[::-1]),
-    "↶": (1, lambda x: list(map(list, zip(*force_matrix(x))))[::-1]),
-    "↷": (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))),
-    "↻": (1, lambda x: [y[::-1] for y in force_matrix(x)[::-1]]),
+    "_":  (2, vecdyadboth(operator.sub)),
+    "+":  (2, vecdyadboth(operator.add)),
+    "±":  (2, vecdyadboth(lambda x, y: [x + y, x - y])),
+    "*":  (2, vecdyadboth(operator.pow)),
+    "×":  (2, vecdyadboth(operator.mul)),
+    "÷":  (2, vecdyadboth(operator.truediv)),
+    ":":  (2, vecdyadboth(operator.floordiv)),
+    "%":  (2, vecdyadboth(operator.mod)),
+    "&":  (2, vecdyadboth(operator.and_)),
+    "|":  (2, vecdyadboth(operator.or_)),
+    "^":  (2, vecdyadboth(operator.xor)),
+    "<":  (2, vecdyadboth(operator.lt)),
+    "≤":  (2, vecdyadboth(operator.le)),
+    "=":  (2, operator.eq),
+    "e":  (2, vecdyadboth(operator.eq)),
+    "n":  (2, vecdyadboth(operator.ne)),
+    "≠":  (2, operator.ne),
+    "≥":  (2, vecdyadboth(operator.ge)),
+    ">":  (2, vecdyadboth(operator.gt)),
+    "»":  (2, vecdyadboth(max)),
+    "«":  (2, vecdyadboth(min)),
+    "®":  (0, lambda: register),
+    ",":  (2, lambda x, y: [x, y]),
+    ";":  (2, lambda x, y: force_list(x) + force_list(y)),
+    "~":  (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
+    "√":  (1, vecmonad(sympy.sqrt)),
+    "!":  (1, vecmonad(lambda x: math.gamma(x + 1))),
+    "·":  (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
+    "‘":  (1, vecmonad((-1).__add__)),
+    "’":  (1, vecmonad(( 1).__add__)),
+    "¹":  (1, lambda x: x),
+    "²":  (1, vecmonad(lambda x: x * x)),
+    "³":  (0, lambda: sympy.Integer(100)),
+    "⁴":  (0, lambda: sympy.Integer(16)),
+    "⁵":  (0, lambda: sympy.Integer(10)),
+    "⁶":  (0, lambda: [" "]),
+    "⁷":  (0, lambda: ["\n"]),
+    "⁸":  (0, lambda: []),
+    "⁹":  (0, lambda: sympy.Integer(256)),
+    "⍺":  (0, lambda: sympy.Rational("0.1")),
+    "⍵":  (0, lambda: 1), # TODO
+    "π":  (0, lambda: sympy.pi),
+    "!":  (1, lambda x: (-1 if x < 0 else 1) * (actorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
+    "A":  (1, vecmonad(abs)),
+    "B":  (1, vecmonad(lambda x: digits(x, 2))),
+    "D":  (1, vecmonad(lambda x: digits(x, 10))),
+    "F":  (1, lambda x: flatten(x)),
+    "H":  (1, vecmonad(lambda x: digits(x, 16))),
+    "P":  reducer(vecdyadboth(operator.mul)),
+    "Q":  (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
+    "R":  (1, vecmonad(lambda x: list(range(1, x + 1)))),
+    "S":  reducer(vecdyadboth(operator.add)),
+    "Ṣ":  (1, sorted),
+    "Ṡ":  (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
+    "↔":  (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
+    "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
+    "Æ∆": (1, lambda x: (x + 1) * x / 2),
+    "↕":  (1, lambda x: force_list(x)[::-1]),
+    "←":  (2, rotater(-1, 1)),
+    "→":  (2, rotater(+1, 1)),
+    "↑":  (2, rotater(-1, 0)),
+    "↓":  (2, rotater(+1, 0)),
+    "¬":  (1, vecmonad(lambda x: not x)),
+    "b":  (2, vecdyadboth(lambda x, y: digits(x, y))),
+    "ḃ":  (2, vecdyadboth(lambda x, y: digits(x, y, bijective = True))),
+    "ė":  (2, lambda x, y: int(x in force_list(y))),
+    "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
+    "↙":  (1, lambda x: list(map(list, zip(*force_matrix(x))))),
+    "↘":  (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))[::-1]),
+    "↶":  (1, lambda x: list(map(list, zip(*force_matrix(x))))[::-1]),
+    "↷":  (1, lambda x: list(map(list, zip(*force_matrix(x[::-1]))))),
+    "↻":  (1, lambda x: [y[::-1] for y in force_matrix(x)[::-1]]),
+    "ŒB": (1, vecmonad(lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x), maxlayer_offset = 1)),
+    "ŒḄ": (1,          lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x)                       ),
 }
 
 operators = {
-    "@": (-1, lambda fs: (2, reverse_args(fs.pop()))),
-    "$": (-1, lambda fs: (1, [fs.pop(), fs.pop()])),
-    "¥": (-1, lambda fs: (2, [fs.pop(), fs.pop()])),
-    "€": (-1, lambda fs: foreachleft(fs.pop())),
-    "₱": (-1, lambda fs: foreachright(fs.pop())),
-    "©": (-1, lambda fs: registrar(fs.pop())),
-    "/": (-1, lambda fs: reducer(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
-    "\\":(-1, lambda fs: oreduce(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
-    "\"":(-1, lambda fs: (2, vecdyadboth(fs.pop()))),
-    "`": (-1, lambda fs: (1, (lambda f: lambda x: dydeval(f, x, x))(fs.pop()))),
-    "{": (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, x))(fs.pop()))),
-    "}": (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, y))(fs.pop()))),
-    "?": (-1, lambda fs: ternary(fs.pop(), fs.pop(), fs.pop())),
+    "@":  (-1, lambda fs: (2, reverse_args(fs.pop()))),
+    "$":  (-1, lambda fs: (1, [fs.pop(), fs.pop()])),
+    "¥":  (-1, lambda fs: (2, [fs.pop(), fs.pop()])),
+    "€":  (-1, lambda fs: foreachleft(fs.pop())),
+    "₱":  (-1, lambda fs: foreachright(fs.pop())),
+    "©":  (-1, lambda fs: registrar(fs.pop())),
+    "/":  (-1, lambda fs: reducer(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
+    "\\": (-1, lambda fs: oreduce(*([fs.pop(-2), fs.pop()] if fs[-1][0] == 0 else [fs.pop()]))),
+    "\"": (-1, lambda fs: (2, vecdyadboth(fs.pop()))),
+    "`":  (-1, lambda fs: (1, (lambda f: lambda x: dydeval(f, x, x))(fs.pop()))),
+    "{":  (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, x))(fs.pop()))),
+    "}":  (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, y))(fs.pop()))),
+    "?":  (-1, lambda fs: ternary(fs.pop(), fs.pop(), fs.pop())),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§"]
@@ -350,11 +375,11 @@ spec = "(" + "|".join(map(re.escape, overloads)) + ")"
 def str_eval(type):
     type = "”‘’»".index(type)
     if type == 0:
-        return lambda code: list(eval('"""%s"""' % code.replace('"', '\\"')))
+        return lambda code: repr(list(eval('"""%s"""' % code.replace('"', '\\"'))))
     if type == 1:
-        return lambda code: list(map(codepage.index, eval('"""%s"""' % code.replace('"', '\\"'))))
+        return lambda code: repr(list(map(codepage.index, eval('"""%s"""' % code.replace('"', '\\"')))))
     if type == 2:
-        return lambda code: (lambda str: sum(sympy.Integer(250) ** (len(str) - index - 1) * sympy.Integer(codepage.index(char) + 1) for index, char in enumerate(str)))(eval('"""%s"""' % code.replace('"', '\\"')))
+        return lambda code: (lambda str: "("+"+".join("sympy.Integer(250)**"+str(len(str)-index-1)+"*sympy.Integer("+repr(codepage.index(char)+1)+")"for index, char in enumerate(str))+")")(eval('"""%s"""' % code.replace('"', '\\"')))
 
 def evalyank(code):
     match = re.match(char, code)
@@ -381,7 +406,7 @@ def elsteval(code):
     while code:
         yanked = evalyank(code)
         if yanked:
-            raw += repr(yanked[1]) + " "
+            raw += yanked[1] + " "
             code = code[len(yanked[0]):]
         else:
             raw += code[0]
