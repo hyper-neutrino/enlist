@@ -4,10 +4,10 @@
 
 codepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶"""
-codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵⍶⍹←↑→↓↔↕↙↘↶↷↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
+codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↑→↓↔↕↙↘↶↷↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż«»‘’“”"""
 
-import re, math, operator, sympy, sys, locale, functools
+import re, math, operator, sympy, sys, locale, functools, itertools
 
 def try_eval(string):
     number = "([0-9]+|[0-9]*\.[0-9]+)"
@@ -51,6 +51,9 @@ def depth(obj):
         if len(obj) == 0: return 1
         return max(map(depth, obj)) + 1
     return 0
+
+def last_input():
+    return python_eval(sys.argv[-1] if len(sys.argv) > 3 else input())
 
 def Operator(argnum):
     class Inner:
@@ -157,6 +160,32 @@ def oreduce(function, block_size = (0, lambda: 0)):
             return [functools.reduce(lambda x, y: dydeval(function, x, y), argument[i : i + size]) for i in range(0, len(argument) - size)]
     return (1, inner)
 
+@Operator(1)
+def sorter(function):
+    def inner(*args):
+        return sorted(args[0], key = (lambda: nileval(function)) if function[0] == 0 else (lambda a: moneval(function, a)) if function[0] == 1 else (lambda a: dydeval(function, a, args[1])))
+    return (max(1, function[0]), inner)
+
+def whileloop(condition, body):
+    def inner(*args):
+        args = list(args) or [0]
+        while (condition[0] == 0 and nileval(condition)) or (condition[0] == 1 and moneval(condition, args[0])) or (condition[0] == 2 and dydeval(condition, *args)):
+            args[0] = nileval(body) if body[0] == 0 else moneval(body, args[0]) if body[0] == 1 else dydeval(body, *args)
+        return args[0]
+    return (max(condition[0], body[0]), inner)
+
+def nfind(amount, condition):
+    def inner(*args):
+        matches = nileval(amount)
+        found = []
+        current = args[0]
+        while len(found) < matches:
+            if (condition[0] == 0 and nileval(condition)) or (condition[0] == 1 and moneval(condition, current)) or (condition[0] == 2 and dydeval(condition, current, args[1])):
+                found.append(current)
+            current += 1
+        return found
+    return (max(1, condition[0]), inner)
+
 def rotater(scale, layer):
     def inner(array, distance):
         if layer == 0 or depth(array) == 1:
@@ -174,12 +203,9 @@ def force_matrix(array):
     if depth(array) == 1: return  [array]
     if depth(array) == 0: return [[array]]
 
-def flatten(array):
-    if depth(array) <= 1: return array
-    result = []
-    for element in array:
-        result += force_list(element)
-    return flatten(result)
+def flatten(array, layer = -1):
+    if layer == 0 or depth(array) <= 1: return array
+    return flatten(sum(map(force_list, array), []), layer - 1)
 
 def ternary(c, f, t):
     # if f[0] != t[0]: raise RuntimeError("Ternary clauses must have same arity")
@@ -230,10 +256,128 @@ def from_base(digits, base):
         num += digit
     return num
 
-# ¡¢£¤ ¦   µ ¿ ÆÇÐÑ ØŒÞßæçð  ñ øœþ   #   '()                      
-#   BC E GHIJKLMNO    TUVWXYZ[ ]   abcd fghijklm opqrstuvwxy      
-# °         ⁺⁻⁼⁽⁾              ⍶⍹           λẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
-# ĊḊĖḞĠḢİĿṀ ȮṖṘ ṪẆẊẎŻạḅḍ ḥịḳḷṃ ọṛṣṭụṿẉỵ ȧ ċḋ ḟġḣŀṁ ȯṗṙṡṫẇẋẏ       
+def listslices(array, number):
+    if number == 1: return [array]
+    length = -(-len(array) // number)
+    return [array[:length]] + listslices(array[length:], number - 1)
+
+def listsplit(array, element):
+    slices = []
+    for e in array:
+        if not slices: slices += [[]]
+        if e == element: slices += [[]]
+        else: slices[-1] += [e]
+    return slices
+
+def partitions(array):
+    if len(array) == 0: return [[]]
+    if len(array) == 1: return [[array]]
+    results = []
+    for i in range(1, len(array) + 1):
+        for j in partitions(array[i:]):
+            results.append([array[:i]] + j)
+    return results
+
+def intpartitions(num):
+    if num == 0: return []
+    if num == 1: return [[1]]
+    result = []
+    for i in range(1, num):
+        for j in intpartitions(num - i):
+            result.append([i] + j)
+    return result + [[num]]
+
+def similar(x, y):
+    if type(x) == type(y) == list:
+        if len(x) == len(y) == 1 and type(x[0]) == type(x[1]) == str:
+            return abs(ord(x[0]) - ord(y[0])) == 1 
+        return len(x) == len(y)
+    elif type(x) != list and type(y) != list:
+        try:
+            return abs(x - y) <= 1
+        except:
+            return False
+    return False
+
+def clone(array):
+    if type(array) == list:
+        return list(map(clone, array))
+    return array
+
+def mold(content, shape):
+    shape = clone(shape)
+    for index in range(len(shape)):
+        if type(shape[index]) == list:
+            shape[index] = mold(content, shape[index])
+        else:
+            item = content.pop(0)
+            shape[index] = item
+            content.append(item)
+    return shape
+
+def diagonals(matrix):
+    diag = []
+    width = len(matrix[0])
+    for i in range(width):
+        diag += [[]]
+        for j in range(min(len(matrix), width - i)):
+            diag[-1] += [matrix[j][i + j]]
+    for i in range(len(matrix) - 1, 0, -1):
+        diag += [[]]
+        for j in range(min(width, len(matrix) - i)):
+            diag[-1] += [matrix[i + j][j]]
+    return diag
+
+def antidiagonals(matrix):
+    return diagonals([row[::-1] for row in matrix])
+
+def bdiagonals(matrix):
+    d = diagonals(matrix)
+    return d[-~-len(matrix):] + d[:-~-len(matrix)]
+
+def bantidiagonals(matrix):
+    d = antidiagonals(matrix)
+    return d[-~-len(matrix):] + d[:-~-len(matrix)]
+
+def median(array):
+    if len(array) % 2 == 0:
+        return (array[len(array) / 2] + array[len(array) / 2 - 1]) / 2
+    else:
+        return array[len(array) // 2]
+
+def mode(array):
+    counts = [array.count(e) for e in array]
+    maxcount = max(counts)
+    return [x for i, x in enumerate(array) if array.index(x) == i and counts[i] == maxcount]
+
+def stdev(array):
+    mean = sum(array) / len(array)
+    return sympy.sqrt(sum((e - mean) ** 2 for e in array) / len(array))
+
+def b_(value):
+    if type(value) == list:
+        return list(map(b_, value))
+    if value == False: return sympy.Integer(0)
+    if value == True : return sympy.Integer(1)
+    return value
+
+def u_(function):
+    return lambda *a: b_(function(*a))
+
+ucodepage  = """!¢£¤¥¦©¬®hπ?€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ ¡"#$%&,()*+’-.\0123456789:;<=>¿"""
+ucodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[/]v_`abcdefgµijklmuopqrstn^wxyz{|}~¶"""
+ucodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↓→↑↔↕↙↘↶↷↻λȦḂḊĖḢİḲĿṀṄȮỤṘṠṪṾẆẎŻẠḄ"""
+ucodepage += """ĊḌẸḞĠḤỊḶṂṆỌṖṚṢṬẈỴẊẒȧḃḋėḥịḳŀṁṅȯṙṡṫụṿẇẏżạḅċḍẹḟġḣḷṃṇọṗṛṣṭẉẋỵẓ«»,,“”"""
+
+rcodepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-.\0123456789:;>=<?"""
+rcodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ]/[^_`abcdefghijklmnopqrstuvwxyz}|{~¶"""
+rcodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁾⁽±≥≠≤√·∆₱•†‡§⍺⍵ŝσ→↑←↓↔↕↘↙↷↶↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
+rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż»«’‘”“"""
+
+# ¡¢£¤ ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
+#   BC E GHIJKLMNO    TUV XY       abcd fghijklm opqr tuvwxy      
+# °         ⁺                               λẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
+# Ċ ĖḞĠḢ ĿṀ Ȯ Ṙ ṪẆẊ Żạḅḍ ḥịḳḷṃ ọṛ ṭụṿẉỵ ȧ  ḋ ḟġḣŀ  ȯṗṙ ṫẇẋ        
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -247,14 +391,15 @@ functions = {
     "&":  (2, vecdyadboth(operator.and_)),
     "|":  (2, vecdyadboth(operator.or_)),
     "^":  (2, vecdyadboth(operator.xor)),
-    "<":  (2, vecdyadboth(operator.lt)),
-    "≤":  (2, vecdyadboth(operator.le)),
-    "=":  (2, operator.eq),
-    "e":  (2, vecdyadboth(operator.eq)),
-    "n":  (2, vecdyadboth(operator.ne)),
-    "≠":  (2, operator.ne),
-    "≥":  (2, vecdyadboth(operator.ge)),
-    ">":  (2, vecdyadboth(operator.gt)),
+    "<":  (2, vecdyadboth(u_(operator.lt))),
+    "≤":  (2, vecdyadboth(u_(operator.le))),
+    "=":  (2, u_(operator.eq)),
+    "e":  (2, vecdyadboth(u_(operator.eq))),
+    "≈":  (2, u_(similar)),
+    "n":  (2, vecdyadboth(u_(operator.ne))),
+    "≠":  (2, u_(operator.ne)),
+    "≥":  (2, vecdyadboth(u_(operator.ge))),
+    ">":  (2, vecdyadboth(u_(operator.gt))),
     "»":  (2, vecdyadboth(max)),
     "«":  (2, vecdyadboth(min)),
     "®":  (0, lambda: register),
@@ -278,21 +423,31 @@ functions = {
     "⍺":  (0, lambda: sympy.Rational("0.1")),
     "⍵":  (0, lambda: 1), # TODO
     "π":  (0, lambda: sympy.pi),
+    "σ":  (1, vecmonad(stdev, maxlayer_offset = 1)),
     "!":  (1, lambda x: (-1 if x < 0 else 1) * (factorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
     "A":  (1, vecmonad(abs)),
     "B":  (1, vecmonad(lambda x: digits(x, 2))),
     "D":  (1, vecmonad(lambda x: digits(x, 10))),
-    "F":  (1, lambda x: flatten(x)),
+    "Ḋ":  (1, partitions),
+    "F":  (1, flatten),
     "H":  (1, vecmonad(lambda x: digits(x, 16))),
+    "İ":  (1, vecmonad(lambda x: ucodepage[codepage.index(x)] if type(x) == str else 1 / x)),
     "P":  reducer(vecdyadboth(operator.mul)),
+    "Ṗ":  (1, lambda x: list(map(list, itertools.permutations(x)))),
     "Q":  (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
     "R":  (1, vecmonad(lambda x: list(range(1, x + 1)))),
     "S":  reducer(vecdyadboth(operator.add)),
     "Ṣ":  (1, sorted),
     "Ṡ":  (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
-    "↔":  (1, vecmonad(lambda x: force_list(x)[::-1], maxlayer_offset = 1)),
+    "W":  (1, lambda x: [x]),
+    "Ẏ":  (1, lambda x: flatten(x, 1)),
+    "Z":  (1, vecmonad(intpartitions)),
     "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
     "Æ∆": (1, lambda x: (x + 1) * x / 2),
+    "Æm": (1, vecmonad(lambda x: sum(x) / len(x), maxlayer_offset = 1)),
+    "Æṁ": (1, vecmonad(median, maxlayer_offset = 1)),
+    "Æṃ": (1, vecmonad(mode, maxlayer_offset = 1)),
+    "↔":  (1, vecmonad(digit_lister(lambda x: x[::-1]), maxlayer_offset = 1)),
     "↕":  (1, lambda x: force_list(x)[::-1]),
     "←":  (2, rotater(-1, 1)),
     "→":  (2, rotater(+1, 1)),
@@ -301,9 +456,16 @@ functions = {
     "¬":  (1, vecmonad(lambda x: not x)),
     "b":  (2, vecdyadboth(lambda x, y: digits(x, y))),
     "ḃ":  (2, vecdyadboth(lambda x, y: digits(x, y, bijective = True))),
+    "ċ":  (2, vecdyadright(lambda l, r: list(map(list, itertools.combinations(l, r))))),
     "ė":  (2, lambda x, y: int(x in force_list(y))),
     "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
     "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
+    "ṁ":  (2, mold),
+    "s":  (2, vecdyadright(lambda l, r: (lambda k: [k[i * r:i * r + r] for i in range(-(-len(k) // r))])(force_list(l)))),
+    "ṡ":  (2, vecdyadright(lambda l, r: (lambda k: [k[i:i + r] for i in range(len(k) - r + 1)])(force_list(l)))),
+    "ŝ":  (2, vecdyadright(lambda l, r: (lambda k: listslices(k, len(k)))(force_list(l)))),
+    "ṣ":  (2, listsplit),
+    "ẏ":  (2, vecdyadright(flatten)),
     "z":  (2, lambda x, y: list(map(list, zip(*lfill(x, y))))),
     "ż":  (2, lambda x, y: (lambda a, b: [([a[i]] if i < len(a) else []) + ([b[i]] if i < len(b) else []) for i in range(max(len(a), len(b)))])(force_list(x), force_list(y))),
     "ẓ":  (2, lambda x, y: list(map(list, zip(force_list(x), force_list(y))))),
@@ -314,12 +476,18 @@ functions = {
     "↻":  (1, lambda x: [y[::-1] for y in force_matrix(x)[::-1]]),
     "ŒB": (1, vecmonad(lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x), maxlayer_offset = 1)),
     "ŒḄ": (1,          lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x)                       ),
+    "ŒM": (1, diagonals),
+    "ŒṀ": (1, antidiagonals),
+    "ŒD": (1, bdiagonals),
+    "ŒḊ": (1, bantidiagonals),
+    "⁽":  (1, lambda x: (lambda y: [y[:-~i] for i in range(len(y))])(force_list(x))),
+    "⁾":  (1, lambda x: (lambda y: [y[ i: ] for i in range(len(y))])(force_list(x))),
 }
 
 operators = {
     "@":  (-1, lambda fs: (2, reverse_args(fs.pop()))),
-    "$":  (-1, lambda fs: (1, [fs.pop(), fs.pop()])),
-    "¥":  (-1, lambda fs: (2, [fs.pop(), fs.pop()])),
+    "$":  (-1, lambda fs: (1, [fs.pop(-2), fs.pop()])),
+    "¥":  (-1, lambda fs: (2, [fs.pop(-2), fs.pop()])),
     "€":  (-1, lambda fs: foreachleft(fs.pop())),
     "₱":  (-1, lambda fs: foreachright(fs.pop())),
     "©":  (-1, lambda fs: registrar(fs.pop())),
@@ -330,6 +498,10 @@ operators = {
     "{":  (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, x))(fs.pop()))),
     "}":  (-1, lambda fs: (2, (lambda f: lambda x, y: moneval(f, y))(fs.pop()))),
     "?":  (-1, lambda fs: ternary(fs.pop(), fs.pop(), fs.pop())),
+    "⁼":  (-1, lambda fs: (1, (lambda f: u_(lambda x: f(x) == x))(fs.pop()))),
+    "¿":  (-1, lambda fs: whileloop(fs.pop(), fs.pop())),
+    "#":  (-1, lambda fs: nfind(fs.pop() if fs[-1][0] == 0 else (0, last_input), fs.pop())),
+    "Þ":  (-1, lambda fs: sorter(fs.pop())),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§"]
@@ -388,7 +560,7 @@ def str_eval(type):
 def evalyank(code):
     match = re.match(char, code)
     if match:
-        return (match.group(), match.group()[1])
+        return (match.group(), "[" + repr(match.group()[1]) + "]")
     match = re.match(strn, code)
     if match:
         return (match.group(), str_eval(match.group()[-1])(match.group()[1:-1]))
@@ -580,7 +752,6 @@ def dydeval(tokens, left, right, layer = 0, nest = False, links = [], index = -1
                 enlist_output(value, "")
             value = nileval(tokens.pop(0), layer = layer)
     return left if value is None else value
-
 
 def evaluate(links, arguments):
     link = links[-1]
