@@ -354,6 +354,32 @@ def stdev(array):
     mean = sum(array) / len(array)
     return sympy.sqrt(sum((e - mean) ** 2 for e in array) / len(array))
 
+def sublist_index(sub, array):
+    if len(sub) > len(array): return False
+    double = array + array
+    for i in range(len(array)):
+        if double[i:i + len(sub)] == sub:
+            return i + 1
+    else:
+        return 0
+
+def cyclic_predecessor(sub, array):
+    return (array + array)[sublist_index(sub, array) + len(array) - 2:][:len(sub)]
+
+def cyclic_successor(sub, array):
+    return (array + array)[sublist_index(sub, array) + 1:][:len(sub)]
+
+def powerset(array):
+    array = range_list(array)
+    values = []
+    for t in range(len(array) + 1):
+        values += list(map(list, itertools.combinations(array, t)))
+    return values
+
+def sublists(array):
+    array = range_list(array)
+    return [array[j:i + j + 1] for i in range(len(array)) for j in range(len(array) - i)]
+
 def b_(value):
     if type(value) == list:
         return list(map(b_, value))
@@ -363,6 +389,37 @@ def b_(value):
 
 def u_(function):
     return lambda *a: b_(function(*a))
+
+def getnil(fs):
+    comp = []
+    while fs[-1][0]:
+        comp.append(fs.pop())
+    comp.append(fs.pop())
+    return (0, comp[::-1])
+
+primes = set(map(sympy.Integer, {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71}))
+composites = set(map(sympy.Integer, {4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 22, 24, 25, 26, 27, 28, 30, 32, 33, 34, 35, 36, 38, 39, 40, 42, 44, 45, 46, 48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 60, 62, 63, 64, 65, 66, 68, 69, 70}))
+
+def PrimeQ(num):
+    global primes, composites
+    if num < 2: return False
+    if num < 4: return True
+    if num in primes: return True
+    if num in composites: return False
+    for prime in (primes | set(range(max(primes) + 2, int(num ** 0.5), 2))):
+        if num % prime == 0:
+            composites |= { num }
+            return False
+    primes |= { num }
+    return True
+
+def GCD(x, y):
+    if x == 0: return y
+    if x > y: return GCD(y, x)
+    return GCD(y - x, x)
+
+def LCM(x, y):
+    return x * y / (GCD(x, y) or 1)
 
 ucodepage  = """!¢£¤¥¦©¬®hπ?€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ ¡"#$%&,()*+’-.\0123456789:;<=>¿"""
 ucodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[/]v_`abcdefgµijklmuopqrstn^wxyz{|}~¶"""
@@ -374,10 +431,10 @@ rcodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ]/[^_`abcdefghijklmnopqrstuvwxyz}|{~�
 rcodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁾⁽±≥≠≤√·∆₱•†‡§⍺⍵ŝσ→↑←↓↔↕↘↙↷↶↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż»«’‘”“"""
 
-# ¡¢£¤ ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
-#   BC E GHIJKLMNO    TUV XY       abcd fghijklm opqr tuvwxy      
-# °         ⁺                               λẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
-# Ċ ĖḞĠḢ ĿṀ Ȯ Ṙ ṪẆẊ Żạḅḍ ḥịḳḷṃ ọṛ ṭụṿẉỵ ȧ  ḋ ḟġḣŀ  ȯṗṙ ṫẇẋ        
+# ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
+#   BC E GHIJKLMNO    TUV XY       abcd f hijk m opqr tuvwxy      
+#           ⁺                               λẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
+# Ċ ĖḞĠḢ ĿṀ Ȯ Ṙ Ṫ Ẋ Żạḅḍ ḥịḳḷṃ ọṛ ṭụṿẉỵ ȧ  ḋ ḟġḣŀ  ȯṗṙ ṫẇẋ        
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -440,6 +497,7 @@ functions = {
     "Ṣ":  (1, sorted),
     "Ṡ":  (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
     "W":  (1, lambda x: [x]),
+    "Ẇ":  (1, sublists),
     "Ẏ":  (1, lambda x: flatten(x, 1)),
     "Z":  (1, vecmonad(intpartitions)),
     "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
@@ -447,6 +505,12 @@ functions = {
     "Æm": (1, vecmonad(lambda x: sum(x) / len(x), maxlayer_offset = 1)),
     "Æṁ": (1, vecmonad(median, maxlayer_offset = 1)),
     "Æṃ": (1, vecmonad(mode, maxlayer_offset = 1)),
+    "œc": (2, vecdyadboth(lambda x, y: factorial(x) / factorial(y) / factorial(x - y))),
+    "œp": (2, vecdyadboth(lambda x, y: factorial(x) / factorial(x - y))),
+    "œ←": (2, cyclic_predecessor),
+    "œ→": (2, cyclic_successor),
+    "æ←": (2, lambda x, y: y[y.index(x) - 1] if x in y else x),
+    "æ→": (2, lambda x, y: y[y.index(x) + 1] if x in y else x),
     "↔":  (1, vecmonad(digit_lister(lambda x: x[::-1]), maxlayer_offset = 1)),
     "↕":  (1, lambda x: force_list(x)[::-1]),
     "←":  (2, rotater(-1, 1)),
@@ -459,6 +523,8 @@ functions = {
     "ċ":  (2, vecdyadright(lambda l, r: list(map(list, itertools.combinations(l, r))))),
     "ė":  (2, lambda x, y: int(x in force_list(y))),
     "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
+    "g":  (2, vecdyadboth(GCD)),
+    "l":  (2, vecdyadboth(LCM)),
     "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
     "ṁ":  (2, mold),
     "s":  (2, vecdyadright(lambda l, r: (lambda k: [k[i * r:i * r + r] for i in range(-(-len(k) // r))])(force_list(l)))),
@@ -476,10 +542,15 @@ functions = {
     "↻":  (1, lambda x: [y[::-1] for y in force_matrix(x)[::-1]]),
     "ŒB": (1, vecmonad(lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x), maxlayer_offset = 1)),
     "ŒḄ": (1,          lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x)                       ),
-    "ŒM": (1, diagonals),
-    "ŒṀ": (1, antidiagonals),
     "ŒD": (1, bdiagonals),
     "ŒḊ": (1, bantidiagonals),
+    "ŒM": (1, diagonals),
+    "ŒṀ": (1, antidiagonals),
+    "ŒṖ": (1, powerset),
+    "ÆR": (1, vecmonad(lambda x:             list(filter(PrimeQ, range(2, x + 1))))),
+    "ÆC": (1, vecmonad(lambda x:         len(list(filter(PrimeQ, range(2, x + 1)))))),
+    "ÆĊ": (1, vecmonad(lambda x: x - 1 - len(list(filter(PrimeQ, range(2, x + 1)))))),
+    "ÆṬ": (1, vecmonad(lambda x: len([k for k in range(1, x) if GCD(k, x) == 1]))),
     "⁽":  (1, lambda x: (lambda y: [y[:-~i] for i in range(len(y))])(force_list(x))),
     "⁾":  (1, lambda x: (lambda y: [y[ i: ] for i in range(len(y))])(force_list(x))),
 }
@@ -502,6 +573,9 @@ operators = {
     "¿":  (-1, lambda fs: whileloop(fs.pop(), fs.pop())),
     "#":  (-1, lambda fs: nfind(fs.pop() if fs[-1][0] == 0 else (0, last_input), fs.pop())),
     "Þ":  (-1, lambda fs: sorter(fs.pop())),
+    "¤":  (-1, lambda fs: getnil(fs)),
+    "°":  (-1, lambda fs: (1, [sympy.sin,  sympy.cos,  sympy.tan,  sympy.asin,  sympy.acos,  sympy.atan][nileval(fs.pop())])),
+    "Æ°": (-1, lambda fs: (1, [sympy.sinh, sympy.cosh, sympy.tanh, sympy.asinh, sympy.acosh, sympy.atanh][nileval(fs.pop())])),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§"]
