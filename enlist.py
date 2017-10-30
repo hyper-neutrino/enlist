@@ -557,7 +557,7 @@ rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹ�
 
 # ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
 #   BC    HI KLMNO      V XY       abcd f hi k m opq  tuvwxy      
-#                                           λẠḄḌẸḤỊḲ Ṃ ỌṚ  ỤṾẈỴẒȦḂ
+#                                           λẠ  Ẹ ỊḲ Ṃ ỌṚ  ỤṾẈỴẒȦḂ
 # Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ ḟġ ŀ  ȯṗ   ẇẋ        
 
 functions = {
@@ -589,8 +589,8 @@ functions = {
     "~":  (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
     "√":  (1, vecmonad(sympy.sqrt)),
     "·":  (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
-    "‘":  (1, vecmonad((-1).__add__)),
-    "’":  (1, vecmonad(( 1).__add__)),
+    "‘":  (1, vecmonad(lambda x: x - 1)),
+    "’":  (1, vecmonad(lambda x: x + 1)),
     "¹":  (1, lambda x: x),
     "²":  (1, vecmonad(lambda x: x * x)),
     "³":  (0, lambda: sympy.Integer(100)),
@@ -603,22 +603,27 @@ functions = {
     "⍺":  (0, lambda: sympy.Rational("0.1")),
     "⍵":  (0, lambda: 1), # TODO
     "π":  (0, lambda: sympy.pi),
-    "σ":  (1, vecmonad(stdev, maxlayer_offset = 1)),
+    "Æσ": (1, vecmonad(stdev, maxlayer_offset = 1)),
     "!":  (1, vecmonad(lambda x: (-1 if x < 0 else 1) * (factorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1))))),
     "A":  (1, vecmonad(abs)),
     "B":  (1, vecmonad(lambda x: digits(x, 2))),
+    "Ḅ":  (1, vecmonad(lambda x: from_base(force_list(x), 2))),
     "D":  (1, vecmonad(lambda x: digits(x, 10))),
     "Ḋ":  (1, partitions),
+    "Ḍ":  (1, vecmonad(lambda x: from_base(force_list(x), 10))),
     "E":  (1, equal),
     "Ė":  (1, lambda x: (lambda y: [[i + 1, e] for i, e in enumerate(y)])(force_list(x))),
     "F":  (1, flatten),
     "G":  (1, grid),
     "H":  (1, vecmonad(lambda x: digits(x, 16))),
     "Ḣ":  (1, lambda x: force_list(x).pop(0)),
+    "Ḥ":  (1, vecmonad(lambda x: from_base(force_list(x), 16))),
     "ÆḢ": (1, lambda x: force_list(x)[0]),
     "İ":  (1, vecmonad(lambda x: ucodepage[codepage.index(x)] if type(x) == str else 1 / x)),
     "J":  (1, lambda x: list(range(1, len(force_list(x)) + 1))),
+    "L":  (1, digit_lister(len)),
     "Ḷ":  (1, vecmonad(lambda x: list(range(0, x, -1 if x < 0 else 1)))),
+    "Ṇ":  (1, u_(lambda x: not x)),
     "P":  reducer(vecdyadboth(operator.mul)),
     "Ṗ":  (1, lambda x: list(map(list, itertools.permutations(x)))),
     "R":  (1, vecmonad(lambda x: list(range(1, x + 1)) if x > 0 else list(range(-1, x - 1, -1)))),
@@ -627,7 +632,7 @@ functions = {
     "Ṡ":  (1, vecmonad(lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate())),
     "T":  (1, lambda x: [i + 1 for i, e in enumerate(force_list(x)) if e]),
     "Ṫ":  (1, lambda x: force_list(x).pop()),
-    "Ṭ":  (1, lambda x: (lambda y: [i + 1 in y for i in range(max(y))])(force_list(x))),
+    "Ṭ":  (1, lambda x: (vecmonad(lambda y: [i + 1 in y for i in range(max(y))], maxlayer_offset = 1))(force_list(x))),
     "ÆṪ": (1, lambda x: force_list(x)[-1]),
     "U":  (1, uniquify(operator.eq)),
     "W":  (1, lambda x: [x]),
@@ -639,7 +644,7 @@ functions = {
     "Æ∆": (1, lambda x: (x + 1) * x / 2),
     "Æm": (1, vecmonad(lambda x: sum(x) / len(x), maxlayer_offset = 1)),
     "Æṁ": (1, vecmonad(median, maxlayer_offset = 1)),
-    "Æṃ": (1, vecmonad(mode, maxlayer_offset = 1)),
+    "Æṃ": (1, mode),
     "œc": (2, vecdyadboth(lambda x, y: factorial(x) / factorial(y) / factorial(x - y))),
     "œp": (2, vecdyadboth(lambda x, y: factorial(x) / factorial(x - y))),
     "œ←": (2, cyclic_predecessor),
@@ -657,7 +662,7 @@ functions = {
     "→":  (2, rotater(+1, 1)),
     "↑":  (2, rotater(-1, 0)),
     "↓":  (2, rotater(+1, 0)),
-    "¬":  (1, vecmonad(lambda x: not x)),
+    "¬":  (1, vecmonad(u_(lambda x: not x))),
     "b":  (2, vecdyadboth(lambda x, y: digits(x, y))),
     "ḃ":  (2, vecdyadboth(lambda x, y: digits(x, y, bijective = True))),
     "ċ":  (2, vecdyadright(lambda l, r: list(map(list, itertools.combinations(l, r))))),
