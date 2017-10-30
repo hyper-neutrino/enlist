@@ -9,6 +9,11 @@ codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥ
 
 import re, math, operator, sympy, sys, locale, functools, itertools
 
+pyrange = range
+
+def range(*a):
+    return list(map(sympy.Integer, pyrange(*a)))
+
 def try_eval(string):
     number = "([0-9]+|[0-9]*\.[0-9]+)"
     if re.match("^({0}j|{0}(\s*\+\s*{0}j)?)$".format(number), string):
@@ -528,10 +533,12 @@ rcodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ]/[^_`abcdefghijklmnopqrstuvwxyz}|{~�
 rcodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁾⁽±≥≠≤√·∆₱•†‡§⍺⍵ŝσ→↑←↓↔↕↘↙↷↶↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż»«’‘”“"""
 
+# Unused Characters for single character functions/operators
+
 # ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
-#   BC    HI KLMNO    T V XY       abcd f hi k m opq  tuvwxy      
-#                                           λẠḄḌẸḤỊḲ Ṃ ỌṚ ṬỤṾẈỴẒȦḂ
-# Ċ ĖḞĠḢ ĿṀ Ȯ Ṙ Ṫ Ẋ Żạḅḍ ḥịḳḷṃ ọ  ṭụṿẉỵ ȧ  ḋ ḟġḣŀ  ȯṗ  ṫẇẋ        
+#   BC    HI KLMNO      V XY       abcd f hi k m opq  tuvwxy      
+#                                           λẠḄḌẸḤỊḲ Ṃ ỌṚ  ỤṾẈỴẒȦḂ
+# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ ḟġ ŀ  ȯṗ   ẇẋ        
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -561,7 +568,6 @@ functions = {
     ";":  (2, lambda x, y: force_list(x) + force_list(y)),
     "~":  (1, vecmonad(lambda x: sympy.Integer(~int(x)))),
     "√":  (1, vecmonad(sympy.sqrt)),
-    "!":  (1, vecmonad(lambda x: math.gamma(x + 1))),
     "·":  (2, vecdyadboth(lambda x, y: sum(p * q for p, q in zip(force_list(x), force_list(y))), maxlayer_offset = 1)),
     "‘":  (1, vecmonad((-1).__add__)),
     "’":  (1, vecmonad(( 1).__add__)),
@@ -578,7 +584,7 @@ functions = {
     "⍵":  (0, lambda: 1), # TODO
     "π":  (0, lambda: sympy.pi),
     "σ":  (1, vecmonad(stdev, maxlayer_offset = 1)),
-    "!":  (1, lambda x: (-1 if x < 0 else 1) * (factorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1)))),
+    "!":  (1, vecmonad(lambda x: (-1 if x < 0 else 1) * (factorial(abs(x)) if isinstance(x, sympy.Integer) else type(x)(math.gamma(x + 1))))),
     "A":  (1, vecmonad(abs)),
     "B":  (1, vecmonad(lambda x: digits(x, 2))),
     "D":  (1, vecmonad(lambda x: digits(x, 10))),
@@ -588,6 +594,8 @@ functions = {
     "F":  (1, flatten),
     "G":  (1, grid),
     "H":  (1, vecmonad(lambda x: digits(x, 16))),
+    "Ḣ":  (1, lambda x: force_list(x).pop(0)),
+    "ÆḢ": (1, lambda x: force_list(x)[0]),
     "İ":  (1, vecmonad(lambda x: ucodepage[codepage.index(x)] if type(x) == str else 1 / x)),
     "J":  (1, lambda x: list(range(1, len(force_list(x)) + 1))),
     "Ḷ":  (1, vecmonad(lambda x: list(range(0, x, -1 if x < 0 else 1)))),
@@ -597,12 +605,16 @@ functions = {
     "S":  reducer(vecdyadboth(operator.add)),
     "Ṣ":  (1, sorted),
     "Ṡ":  (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
+    "T":  (1, lambda x: [i + 1 for i, e in enumerate(force_list(x)) if e]),
+    "Ṫ":  (1, lambda x: force_list(x).pop()),
+    "Ṭ":  (1, lambda x: (lambda y: [i + 1 in y for i in range(max(y))])(force_list(x))),
+    "ÆṪ": (1, lambda x: force_list(x)[-1]),
     "U":  (1, uniquify(operator.eq)),
     "W":  (1, lambda x: [x]),
     "Ẇ":  (1, sublists),
     "Ẏ":  (1, lambda x: flatten(x, 1)),
     "Z":  (1, vecmonad(intpartitions)),
-    "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])])),
+    "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])], maxlayer_offset = 1)),
     "Æ∆": (1, lambda x: (x + 1) * x / 2),
     "Æm": (1, vecmonad(lambda x: sum(x) / len(x), maxlayer_offset = 1)),
     "Æṁ": (1, vecmonad(median, maxlayer_offset = 1)),
@@ -615,6 +627,7 @@ functions = {
     "æ→": (2, lambda x, y: y[y.index(x) + 1] if x in y else x),
     "æ«": (2, vecdyadboth(lambda x, y: x * 2 ** y)),
     "æ»": (2, vecdyadboth(lambda x, y: sympy.Integer(x * 2 ** -y))),
+    "æ√": (2, vecdyadboth(lambda x, y: x ** (1 / y))),
     "↔":  (1, vecmonad(digit_lister(lambda x: x[::-1]), maxlayer_offset = 1)),
     "↕":  (1, lambda x: force_list(x)[::-1]),
     "←":  (2, rotater(-1, 1)),
@@ -628,6 +641,8 @@ functions = {
     "ė":  (2, lambda x, y: int(x in force_list(y))),
     "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
     "g":  (2, vecdyadboth(GCD)),
+    "ḣ":  (2, vecdyadright(lambda x, y: x[:y])),
+    "ḥ":  (2, vecdyadright(lambda x, y: x[:-y])),
     "j":  (2, join),
     "l":  (2, vecdyadboth(LCM)),
     "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
@@ -639,6 +654,8 @@ functions = {
     "ṡ":  (2, vecdyadright(lambda l, r: (lambda k: [k[i:i + r] for i in range(len(k) - r + 1)])(force_list(l)))),
     "ŝ":  (2, vecdyadright(lambda l, r: (lambda k: listslices(k, len(k)))(force_list(l)))),
     "ṣ":  (2, listsplit),
+    "ṫ":  (2, vecdyadright(lambda x, y: x[y - 1:])),
+    "ṭ":  (2, vecdyadright(lambda x, y: x[-y:])),
     "ẏ":  (2, vecdyadright(flatten)),
     "z":  (2, lambda x, y: list(map(list, zip(*lfill(x, y))))),
     "ż":  (2, lambda x, y: (lambda a, b: [([a[i]] if i < len(a) else []) + ([b[i]] if i < len(b) else []) for i in range(max(len(a), len(b)))])(force_list(x), force_list(y))),
@@ -655,6 +672,7 @@ functions = {
     "ŒḌ": (1, undiagonals),
     "ŒM": (1, diagonals),
     "ŒṀ": (1, antidiagonals),
+    "ŒT": (1, lambda x: sum(1 if e else 0 for e in x)),
     "ŒṖ": (1, powerset),
     "ÆR": (1, vecmonad(lambda x:             list(filter(PrimeQ, range(2, x + 1))))),
     "ÆC": (1, vecmonad(lambda x:         len(list(filter(PrimeQ, range(2, x + 1)))))),
