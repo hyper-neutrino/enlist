@@ -1,6 +1,6 @@
 # Enlist by Alexander Liao
 # Parts of this program are taken from Dennis's code for the Jelly programming language,
-# in compliance to the MIT license and with his additionally expressed permission   
+# in compliance to the MIT license and with his additionally expressed permission
 
 codepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-./0123456789:;<=>?"""
 codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶"""
@@ -349,7 +349,7 @@ def intpartitions(num):
 def similar(x, y):
     if type(x) == type(y) == list:
         if len(x) == len(y) == 1 and type(x[0]) == type(x[1]) == str:
-            return abs(ord(x[0]) - ord(y[0])) == 1 
+            return abs(ord(x[0]) - ord(y[0])) == 1
         return len(x) == len(y)
     elif type(x) != list and type(y) != list:
         try:
@@ -381,7 +381,7 @@ def undiagonals(ds):
     maxlen = max(lengths)
     index = lengths.index(maxlen)
     ds = ds[index:] + ds[:index]
-    width = len([d for d in ds if len(d) == maxlen]) + len(ds[0]) - 1 
+    width = len([d for d in ds if len(d) == maxlen]) + len(ds[0]) - 1
     matrix = [[sympy.Integer(0)] * width for i in range(len(ds[0]))]
     for i in range(len(ds)):
         if i < width:
@@ -555,10 +555,10 @@ rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹ�
 
 # Unused Characters for single character functions/operators
 
-# ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
-#   BC    HI KLMNO      V XY       abcd f hi k m opq  tuvwxy      
+# ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()
+#   BC    HI KLMNO      V XY       abcd f hi k m opq  tuvwxy
 #                                           λẠ  Ẹ ỊḲ Ṃ ỌṚ  ỤṾẈỴẒȦḂ
-# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ ḟġ ŀ  ȯṗ   ẇẋ        
+# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ ḟġ ŀ  ȯṗ   ẇẋ
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -1005,6 +1005,7 @@ def dydeval(tokens, left, right, layer = 0, nest = False, links = [], index = -1
     return left if value is None else value
 
 def evaluate(links, arguments):
+    links = links or [[]]
     link = links[-1]
     if len(arguments) >= 1:
         functions["⍺"] = (0, lambda: arguments[0])
