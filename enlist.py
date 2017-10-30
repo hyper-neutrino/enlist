@@ -166,6 +166,60 @@ def sorter(function):
         return sorted(args[0], key = (lambda: nileval(function)) if function[0] == 0 else (lambda a: moneval(function, a)) if function[0] == 1 else (lambda a: dydeval(function, a, args[1])))
     return (max(1, function[0]), inner)
 
+@Operator(2)
+def uniquify(comparator):
+    def inner(array):
+        array = force_list(array)[:]
+        values = []
+        for element in array:
+            for value in values:
+                if dydeval(comparator, element, value):
+                    break
+            else:
+                values.append(element)
+        return values
+    return inner
+
+@Operator(1)
+def keyuniquify(function):
+    def inner(*args):
+        array = force_list(args[0])[:]
+        e = (lambda x: nileval(function)) if function[0] == 0 else (lambda x: moneval(function, x)) if function[0] == 1 else (lambda x: dydeval(function, x, args[1]))
+        values = []
+        for element in array:
+            for value in values:
+                if e(element) == e(value):
+                    break
+            else:
+                values.append(element)
+        return values
+    return inner
+
+@Operator(2)
+def eqcollapser(comparator):
+    def inner(array):
+        array = force_list(array)[:]
+        if len(array) == 0: return []
+        values = [array.pop(0)]
+        for element in array:
+            if not dydeval(comparator, element, values[-1]):
+                values.append(element)
+        return values
+    return inner
+
+@Operator(1)
+def keyeqcollapser(function):
+    def inner(*args):
+        array = force_list(args[0])[:]
+        if len(array) == 0: return []
+        e = (lambda x: nileval(function)) if function[0] == 0 else (lambda x: moneval(function, x)) if function[0] == 1 else (lambda x: dydeval(function, x, args[1]))
+        values = [array.pop(0)]
+        for element in array:
+            if e(element) != e(values[-1]):
+                values.append(element)
+        return values
+    return inner
+
 def whileloop(condition, body):
     def inner(*args):
         args = list(args) or [0]
@@ -315,6 +369,25 @@ def mold(content, shape):
             content.append(item)
     return shape
 
+def undiagonals(ds):
+    ds = force_list(ds)
+    ds = list(map(force_list, ds))
+    lengths = list(map(len, ds))
+    maxlen = max(lengths)
+    index = lengths.index(maxlen)
+    ds = ds[index:] + ds[:index]
+    width = len([d for d in ds if len(d) == maxlen]) + len(ds[0]) - 1 
+    matrix = [[sympy.Integer(0)] * width for i in range(len(ds[0]))]
+    for i in range(len(ds)):
+        if i < width:
+            for j in range(len(ds[i])):
+                matrix[j][i + j] = ds[i][j]
+        else:
+            bh = len(matrix) - i + width - 1
+            for j in range(len(ds[i])):
+                matrix[bh + j][j] = ds[i][j]
+    return matrix
+
 def diagonals(matrix):
     diag = []
     width = len(matrix[0])
@@ -421,6 +494,30 @@ def GCD(x, y):
 def LCM(x, y):
     return x * y / (GCD(x, y) or 1)
 
+def equal(array):
+    array = force_list(array)
+    return sympy.Integer(all(element == array[0] for element in array))
+
+def join(array, value):
+    array = force_list(array)[:]
+    last = [array.pop()] if array else []
+    return sum(([element, value] for element in array), []) + last
+
+def grid(array): # Taken directly from Jelly
+    if depth(array) == 1:
+        return join(array, ' ')
+    if depth(array) == 2 and equal(list(map(len, array))):
+        array = [[str(entry) for entry in row] for row in array]
+        width = max(max([len(entry) for entry in row]) if row else 0 for row in array)
+        array = [[list(entry.rjust(width)) for entry in row] for row in array]
+        return join([join(row, ' ') for row in array], '\n')
+    if depth(array) == 3 and all(type(item) == str for item in flatten(array)):
+        array = [[''.join(entry) for entry in row] for row in array]
+        width = max(max([len(entry) for entry in row]) if row else 0 for row in array)
+        array = [[list(entry.ljust(width)) for entry in row] for row in array]
+        return join([join(row, ' ') for row in array], '\n')
+    return join(array, '\n')
+
 ucodepage  = """!¢£¤¥¦©¬®hπ?€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ ¡"#$%&,()*+’-.\0123456789:;<=>¿"""
 ucodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[/]v_`abcdefgµijklmuopqrstn^wxyz{|}~¶"""
 ucodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↓→↑↔↕↙↘↶↷↻λȦḂḊĖḢİḲĿṀṄȮỤṘṠṪṾẆẎŻẠḄ"""
@@ -432,9 +529,9 @@ rcodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁾⁽±≥≠≤√·∆₱�
 rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż»«’‘”“"""
 
 # ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
-#   BC E GHIJKLMNO    TUV XY       abcd f hijk m opqr tuvwxy      
-#           ⁺                               λẠḄḌẸḤỊḲḶṂ ỌṚ ṬỤṾẈỴẒȦḂ
-# Ċ ĖḞĠḢ ĿṀ Ȯ Ṙ Ṫ Ẋ Żạḅḍ ḥịḳḷṃ ọṛ ṭụṿẉỵ ȧ  ḋ ḟġḣŀ  ȯṗṙ ṫẇẋ        
+#   BC    HI KLMNO    T V XY       abcd f hi k m opq  tuvwxy      
+#                                           λẠḄḌẸḤỊḲ Ṃ ỌṚ ṬỤṾẈỴẒȦḂ
+# Ċ ĖḞĠḢ ĿṀ Ȯ Ṙ Ṫ Ẋ Żạḅḍ ḥịḳḷṃ ọ  ṭụṿẉỵ ȧ  ḋ ḟġḣŀ  ȯṗ  ṫẇẋ        
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -445,9 +542,9 @@ functions = {
     "÷":  (2, vecdyadboth(operator.truediv)),
     ":":  (2, vecdyadboth(operator.floordiv)),
     "%":  (2, vecdyadboth(operator.mod)),
-    "&":  (2, vecdyadboth(operator.and_)),
-    "|":  (2, vecdyadboth(operator.or_)),
-    "^":  (2, vecdyadboth(operator.xor)),
+    "&":  (2, vecdyadboth(lambda x, y: sympy.Integer(int(x) & int(y)))),
+    "|":  (2, vecdyadboth(lambda x, y: sympy.Integer(int(x) | int(y)))),
+    "^":  (2, vecdyadboth(lambda x, y: sympy.Integer(int(x) ^ int(y)))),
     "<":  (2, vecdyadboth(u_(operator.lt))),
     "≤":  (2, vecdyadboth(u_(operator.le))),
     "=":  (2, u_(operator.eq)),
@@ -486,16 +583,21 @@ functions = {
     "B":  (1, vecmonad(lambda x: digits(x, 2))),
     "D":  (1, vecmonad(lambda x: digits(x, 10))),
     "Ḋ":  (1, partitions),
+    "E":  (1, equal),
+    "Ė":  (1, lambda x: (lambda y: [[i + 1, e] for i, e in enumerate(y)])(force_list(x))),
     "F":  (1, flatten),
+    "G":  (1, grid),
     "H":  (1, vecmonad(lambda x: digits(x, 16))),
     "İ":  (1, vecmonad(lambda x: ucodepage[codepage.index(x)] if type(x) == str else 1 / x)),
+    "J":  (1, lambda x: list(range(1, len(force_list(x)) + 1))),
+    "Ḷ":  (1, vecmonad(lambda x: list(range(0, x, -1 if x < 0 else 1)))),
     "P":  reducer(vecdyadboth(operator.mul)),
     "Ṗ":  (1, lambda x: list(map(list, itertools.permutations(x)))),
-    "Q":  (1, lambda l: [l[i] for i in range(len(l)) if l.index(l[i]) == i]),
-    "R":  (1, vecmonad(lambda x: list(range(1, x + 1)))),
+    "R":  (1, vecmonad(lambda x: list(range(1, x + 1)) if x > 0 else list(range(-1, x - 1, -1)))),
     "S":  reducer(vecdyadboth(operator.add)),
     "Ṣ":  (1, sorted),
     "Ṡ":  (1, lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate()),
+    "U":  (1, uniquify(operator.eq)),
     "W":  (1, lambda x: [x]),
     "Ẇ":  (1, sublists),
     "Ẏ":  (1, lambda x: flatten(x, 1)),
@@ -511,6 +613,8 @@ functions = {
     "œ→": (2, cyclic_successor),
     "æ←": (2, lambda x, y: y[y.index(x) - 1] if x in y else x),
     "æ→": (2, lambda x, y: y[y.index(x) + 1] if x in y else x),
+    "æ«": (2, vecdyadboth(lambda x, y: x * 2 ** y)),
+    "æ»": (2, vecdyadboth(lambda x, y: sympy.Integer(x * 2 ** -y))),
     "↔":  (1, vecmonad(digit_lister(lambda x: x[::-1]), maxlayer_offset = 1)),
     "↕":  (1, lambda x: force_list(x)[::-1]),
     "←":  (2, rotater(-1, 1)),
@@ -524,9 +628,13 @@ functions = {
     "ė":  (2, lambda x, y: int(x in force_list(y))),
     "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
     "g":  (2, vecdyadboth(GCD)),
+    "j":  (2, join),
     "l":  (2, vecdyadboth(LCM)),
     "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
     "ṁ":  (2, mold),
+    "r":  (2, vecdyadboth(lambda l, r: list(range(l, r + (-1 if r < l else 1), -1 if r < l else 1)))),
+    "ṙ":  (2, vecdyadboth(lambda l, r: list(range(l, r, -1 if r < l else 1)))),
+    "ṛ":  (2, vecdyadboth(lambda l, r: (lambda d: list(range(l + d, r, d)))(-1 if r < l else 1))),
     "s":  (2, vecdyadright(lambda l, r: (lambda k: [k[i * r:i * r + r] for i in range(-(-len(k) // r))])(force_list(l)))),
     "ṡ":  (2, vecdyadright(lambda l, r: (lambda k: [k[i:i + r] for i in range(len(k) - r + 1)])(force_list(l)))),
     "ŝ":  (2, vecdyadright(lambda l, r: (lambda k: listslices(k, len(k)))(force_list(l)))),
@@ -544,13 +652,27 @@ functions = {
     "ŒḄ": (1,          lambda x: digit_lister(lambda y: y[:-1] + y[::-1])(x)                       ),
     "ŒD": (1, bdiagonals),
     "ŒḊ": (1, bantidiagonals),
+    "ŒḌ": (1, undiagonals),
     "ŒM": (1, diagonals),
     "ŒṀ": (1, antidiagonals),
     "ŒṖ": (1, powerset),
     "ÆR": (1, vecmonad(lambda x:             list(filter(PrimeQ, range(2, x + 1))))),
     "ÆC": (1, vecmonad(lambda x:         len(list(filter(PrimeQ, range(2, x + 1)))))),
     "ÆĊ": (1, vecmonad(lambda x: x - 1 - len(list(filter(PrimeQ, range(2, x + 1)))))),
-    "ÆṬ": (1, vecmonad(lambda x: len([k for k in range(1, x) if GCD(k, x) == 1]))),
+    "ÆṪ": (1, vecmonad(lambda x: len([k for k in range(1, x) if GCD(k, x) == 1]))),
+    "ÆS": (1, vecmonad(sympy. sin )),
+    "ÆẠ": (1, vecmonad(sympy. cos )),
+    "ÆT": (1, vecmonad(sympy. tan )),
+    "ÆṢ": (1, vecmonad(sympy.asin )),
+    "ÆA": (1, vecmonad(sympy.acos )),
+    "ÆṬ": (1, vecmonad(sympy.atan )),
+    "Æs": (1, vecmonad(sympy. sinh)),
+    "Æa": (1, vecmonad(sympy. cosh)),
+    "Æt": (1, vecmonad(sympy. tanh)),
+    "Æṣ": (1, vecmonad(sympy.asinh)),
+    "Æạ": (1, vecmonad(sympy.acosh)),
+    "Æṭ": (1, vecmonad(sympy.atanh)),
+    "ÆU": (1, eqcollapser(operator.eq)),
     "⁽":  (1, lambda x: (lambda y: [y[:-~i] for i in range(len(y))])(force_list(x))),
     "⁾":  (1, lambda x: (lambda y: [y[ i: ] for i in range(len(y))])(force_list(x))),
 }
@@ -574,8 +696,10 @@ operators = {
     "#":  (-1, lambda fs: nfind(fs.pop() if fs[-1][0] == 0 else (0, last_input), fs.pop())),
     "Þ":  (-1, lambda fs: sorter(fs.pop())),
     "¤":  (-1, lambda fs: getnil(fs)),
-    "°":  (-1, lambda fs: (1, [sympy.sin,  sympy.cos,  sympy.tan,  sympy.asin,  sympy.acos,  sympy.atan][nileval(fs.pop())])),
-    "Æ°": (-1, lambda fs: (1, [sympy.sinh, sympy.cosh, sympy.tanh, sympy.asinh, sympy.acosh, sympy.atanh][nileval(fs.pop())])),
+    "⁺":  (-1, lambda fs: (1, uniquify(fs.pop()))),
+    "Ð⁺": (-1, lambda fs: (max(1, fs[-1][0]), keyuniquify(fs.pop()))),
+    "ÐU": (-1, lambda fs: (1, eqcollapser(fs.pop()))),
+    "ÐỤ": (-1, lambda fs: (max(1, fs[-1][0]), keyeqcollapser(fs.pop()))),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§"]
