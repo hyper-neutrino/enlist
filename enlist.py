@@ -7,7 +7,7 @@ codepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~¶
 codepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↑→↓↔↕↙↘↶↷↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 codepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż«»‘’“”"""
 
-import re, math, operator, sympy, sys, locale, functools, itertools
+import re, math, operator, sympy, sys, locale, functools, itertools, random
 
 pyrange = range
 
@@ -523,6 +523,26 @@ def grid(array): # Taken directly from Jelly
         return join([join(row, ' ') for row in array], '\n')
     return join(array, '\n')
 
+def runlength_encode(array):
+    array = force_list(array)
+    results = []
+    for element in array:
+        if results and element == results[-1][0]:
+            results[-1][1] += 1
+        else:
+            results.append([element, 1])
+    return results
+
+def group(array):
+    array = force_list(array)
+    results = []
+    for element in array:
+        if results and element == results[-1][0]:
+            results[-1].append(element)
+        else:
+            results.append([element])
+    return results
+
 ucodepage  = """!¢£¤¥¦©¬®hπ?€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ ¡"#$%&,()*+’-.\0123456789:;<=>¿"""
 ucodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[/]v_`abcdefgµijklmuopqrstn^wxyz{|}~¶"""
 ucodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↓→↑↔↕↙↘↶↷↻λȦḂḊĖḢİḲĿṀṄȮỤṘṠṪṾẆẎŻẠḄ"""
@@ -612,6 +632,7 @@ functions = {
     "U":  (1, uniquify(operator.eq)),
     "W":  (1, lambda x: [x]),
     "Ẇ":  (1, sublists),
+    "X":  (1, lambda x: random.choice(x) if type(x) == list else sympy.Integer(random.randrange(1, x + 1)) if x % 1 == 0 else sympy.Rational(random.random() * x)),
     "Ẏ":  (1, lambda x: flatten(x, 1)),
     "Z":  (1, vecmonad(intpartitions)),
     "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])], maxlayer_offset = 1)),
@@ -628,6 +649,8 @@ functions = {
     "æ«": (2, vecdyadboth(lambda x, y: x * 2 ** y)),
     "æ»": (2, vecdyadboth(lambda x, y: sympy.Integer(x * 2 ** -y))),
     "æ√": (2, vecdyadboth(lambda x, y: x ** (1 / y))),
+    "æx": (2, vecdyadboth(lambda x, y: sympy.Integer(random.randrange(x, y)))),
+    "œx": (2, vecdyadboth(lambda x, y: sympy.Rational(random.random() * (y - x) + x))),
     "↔":  (1, vecmonad(digit_lister(lambda x: x[::-1]), maxlayer_offset = 1)),
     "↕":  (1, lambda x: force_list(x)[::-1]),
     "←":  (2, rotater(-1, 1)),
@@ -674,6 +697,9 @@ functions = {
     "ŒṀ": (1, antidiagonals),
     "ŒT": (1, lambda x: sum(1 if e else 0 for e in x)),
     "ŒṖ": (1, powerset),
+    "Œg": (1, group),
+    "Œr": (1, runlength_encode),
+    "Œṙ": (1, lambda x: sum([[e] * i for e, i in x], [])),
     "ÆR": (1, vecmonad(lambda x:             list(filter(PrimeQ, range(2, x + 1))))),
     "ÆC": (1, vecmonad(lambda x:         len(list(filter(PrimeQ, range(2, x + 1)))))),
     "ÆĊ": (1, vecmonad(lambda x: x - 1 - len(list(filter(PrimeQ, range(2, x + 1)))))),
@@ -693,6 +719,9 @@ functions = {
     "ÆU": (1, eqcollapser(operator.eq)),
     "⁽":  (1, lambda x: (lambda y: [y[:-~i] for i in range(len(y))])(force_list(x))),
     "⁾":  (1, lambda x: (lambda y: [y[ i: ] for i in range(len(y))])(force_list(x))),
+    "ØX": (0, lambda: sympy.Rational(random.random())),
+    "œḷ": (2, lambda x, y: x),
+    "œṛ": (2, lambda x, y: y),
 }
 
 operators = {
@@ -751,7 +780,7 @@ def to_n(text):
 
 dgts = r"(?:[1-9][0-9]*)"
 intg = r"(0|-?{d}|-)".format(d = dgts)
-real = r"(-?{d}?\.{d}?)".format(d = dgts)
+real = r"(-?{d}?\.[0-9]*)".format(d = dgts)
 expn = r"{n}?ȷ{n}?".format(n = "({r}|{i})".format(r = real, i = intg))
 cmpx = r"{n}?ı{n}?".format(n = "({e}|{r}|{i})".format(e = expn, r = real, i = intg))
 numr = "(" + "|".join([cmpx, expn, real, intg]) + ")"
