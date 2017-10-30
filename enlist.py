@@ -695,6 +695,7 @@ functions = {
     "ŒḌ": (1, undiagonals),
     "ŒM": (1, diagonals),
     "ŒṀ": (1, antidiagonals),
+    "Œ_": (1, lambda x: []),
     "ŒT": (1, lambda x: sum(1 if e else 0 for e in x)),
     "ŒṖ": (1, powerset),
     "Œg": (1, group),
