@@ -629,7 +629,7 @@ functions = {
     "R":  (1, vecmonad(lambda x: list(range(1, x + 1)) if x > 0 else list(range(-1, x - 1, -1)))),
     "S":  reducer(vecdyadboth(operator.add)),
     "Ṣ":  (1, sorted),
-    "Ṡ":  (1, vecmonad(lambda x: (1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate())),
+    "Ṡ":  (1, vecmonad(lambda x: sympy.Integer(1 if x > 0 else -1 if x else 0) if x.is_real else x.conjugate())),
     "T":  (1, lambda x: [i + 1 for i, e in enumerate(force_list(x)) if e]),
     "Ṫ":  (1, lambda x: force_list(x).pop()),
     "Ṭ":  (1, lambda x: (vecmonad(lambda y: [i + 1 in y for i in range(max(y))], maxlayer_offset = 1))(force_list(x))),
