@@ -901,7 +901,10 @@ def preexecute(tokens):
     func_stack = []
     for token in tokens:
         if 0 <= token[0] <= 2 or token[0] == -2:
-            func_stack.append(token)
+            if isinstance(token[1], list):
+                func_stack.append((token[0], preexecute(token[1])))
+            else:
+                func_stack.append(token)
         elif token[0] == -1:
             func_stack.append(token[1](func_stack))
         else:
