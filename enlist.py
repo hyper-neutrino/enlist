@@ -225,6 +225,13 @@ def keyeqcollapser(function):
         return values
     return inner
 
+def applier(indices, function):
+    def inner(*args):
+        I = [nileval, moneval, dydeval][indices[0]](indices, *args[:indices[0]])
+        array = force_list(args[0])
+        return [[nileval, moneval, dydeval][function[0]](function, *[e, 0 if len(args) < 2 else args[1]][:function[0]]) if i + 1 in I else e for i, e in enumerate(array)]
+    return (max([1, indices[0], function[0]]), inner)
+
 def whileloop(condition, body):
     def inner(*args):
         args = list(args) or [0]
@@ -555,7 +562,7 @@ rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹ�
 
 # Unused Characters for single character functions/operators
 
-# ¡¢£  ¦   µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()
+# ¡¢£      µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()
 #   BC    HI KLMNO      V XY       abcd f hi k m opq  tuvwxy
 #                                           λẠ  Ẹ ỊḲ Ṃ ỌṚ  ỤṾẈỴẒȦḂ
 # Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ ḟġ ŀ  ȯṗ   ẇẋ
@@ -706,6 +713,7 @@ functions = {
     "Œg": (1, group),
     "Œr": (1, runlength_encode),
     "Œṙ": (1, lambda x: sum([[e] * i for e, i in x], [])),
+    "Œ√": (1, vecmonad(lambda x: 1 if (x ** 0.5) % 1 == 0 else 0)),
     "ÆR": (1, vecmonad(lambda x:             list(filter(PrimeQ, range(2, x + 1))))),
     "ÆC": (1, vecmonad(lambda x:         len(list(filter(PrimeQ, range(2, x + 1)))))),
     "ÆĊ": (1, vecmonad(lambda x: x - 1 - len(list(filter(PrimeQ, range(2, x + 1)))))),
@@ -723,6 +731,8 @@ functions = {
     "Æạ": (1, vecmonad(sympy.acosh)),
     "Æṭ": (1, vecmonad(sympy.atanh)),
     "ÆU": (1, eqcollapser(operator.eq)),
+    "ÆI": (1, vecmonad(u_(lambda x: x % 1 == 0))),
+    "Æ√": (1, vecmonad(lambda x: sympy.Integer(x ** 0.5))),
     "⁽":  (1, lambda x: (lambda y: [y[:-~i] for i in range(len(y))])(force_list(x))),
     "⁾":  (1, lambda x: (lambda y: [y[ i: ] for i in range(len(y))])(force_list(x))),
     "ØX": (0, lambda: sympy.Rational(random.random())),
@@ -753,6 +763,7 @@ operators = {
     "Ð⁺": (-1, lambda fs: (max(1, fs[-1][0]), keyuniquify(fs.pop()))),
     "ÐU": (-1, lambda fs: (1, eqcollapser(fs.pop()))),
     "ÐỤ": (-1, lambda fs: (max(1, fs[-1][0]), keyeqcollapser(fs.pop()))),
+    "¦":  (-1, lambda fs: applier(fs.pop(), fs.pop())),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§"]
@@ -1047,6 +1058,8 @@ def enlist_output(argument, end = "\n", transform = stringify):
     return argument
 
 if __name__ == "__main__":
+    print("|Character|Function|\n|---------|--------|")
+    print("\n".join(map("|`%s`||".__mod__,[x for x in functions if x[0]=="œ"and functions[x][0]==2])))
     args = list(map(try_eval, sys.argv[1:]))
     for i in range(len(args)):
         functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, lambda: args[i])
