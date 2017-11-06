@@ -1058,8 +1058,6 @@ def enlist_output(argument, end = "\n", transform = stringify):
     return argument
 
 if __name__ == "__main__":
-    print("|Character|Function|\n|---------|--------|")
-    print("\n".join(map("|`%s`||".__mod__,[x for x in functions if x[0]=="œ"and functions[x][0]==2])))
     args = list(map(try_eval, sys.argv[1:]))
     for i in range(len(args)):
         functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, lambda: args[i])
