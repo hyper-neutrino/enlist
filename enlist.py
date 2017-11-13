@@ -225,6 +225,14 @@ def keyeqcollapser(function):
         return values
     return inner
 
+def filterer(function, diff):
+    def inner(*args):
+        array = force_list(args[0])[:]
+        results = []
+        e = (lambda x: nileval(function)) if function[0] == 0 else (lambda x: moneval(function, x)) if function[0] == 1 else (lambda x: dydeval(function, x, args[1]))
+        return [element for element in array if diff - bool(e(element))]
+    return (max(1, function[0]), inner)
+
 def applier(indices, function):
     def inner(*args):
         I = [nileval, moneval, dydeval][indices[0]](indices, *args[:indices[0]])
@@ -555,17 +563,17 @@ ucodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[/]v_`abcdefgµijklmuopqrstn^wxyz{|}~
 ucodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↓→↑↔↕↙↘↶↷↻λȦḂḊĖḢİḲĿṀṄȮỤṘṠṪṾẆẎŻẠḄ"""
 ucodepage += """ĊḌẸḞĠḤỊḶṂṆỌṖṚṢṬẈỴẊẒȧḃḋėḥịḳŀṁṅȯṙṡṫụṿẇẏżạḅċḍẹḟġḣḷṃṇọṗṛṣṭẉẋỵẓ«»,,“”"""
 
-rcodepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&'()*+,-.\0123456789:;>=<?"""
-rcodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ]/[^_`abcdefghijklmnopqrstuvwxyz}|{~¶"""
+rcodepage  = """¡¢£¤¥¦©¬®µπ¿€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ !"#$%&')(*+,-./0123456789:;>=<?"""
+rcodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ]\[^_`abcdefghijklmnopqrstuvwxyz}|{~¶"""
 rcodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁾⁽±≥≠≤√·∆₱•†‡§⍺⍵ŝσ→↑←↓↔↕↘↙↷↶↻λẠḄḌẸḤỊḲḶṂṆỌṚṢṬỤṾẈỴẒȦḂ"""
 rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹḥịḳḷṃṇọṛṣṭụṿẉỵẓȧḃċḋėḟġḣŀṁṅȯṗṙṡṫẇẋẏż»«’‘”“"""
 
 # Unused Characters for single character functions/operators
 
 # ¡¢£      µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()
-#   BC    HI KLMNO      V XY       abcd f hi k m opq  tuvwxy
-#                                           λẠ  Ẹ ỊḲ Ṃ ỌṚ  ỤṾẈỴẒȦḂ
-# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ ḟġ ŀ  ȯṗ   ẇẋ
+#   BC    HI KLMN       V XY       abcd f hi k m o q  tuvwxy
+#                                           λẠ  Ẹ ỊḲ Ṃ  Ṛ  ỤṾẈỴẒȦḂ
+# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ  ġ ŀ  ȯ    ẇ 
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -631,6 +639,8 @@ functions = {
     "L":  (1, digit_lister(len)),
     "Ḷ":  (1, vecmonad(lambda x: list(range(0, x, -1 if x < 0 else 1)))),
     "Ṇ":  (1, u_(lambda x: not x)),
+    "O":  (1, vecmonad(ord)),
+    "Ọ":  (1, vecmonad(chr)),
     "P":  reducer(vecdyadboth(operator.mul)),
     "Ṗ":  (1, lambda x: list(map(list, itertools.permutations(x)))),
     "R":  (1, vecmonad(lambda x: list(range(1, x + 1)) if x > 0 else list(range(-1, x - 1, -1)))),
@@ -675,6 +685,8 @@ functions = {
     "ċ":  (2, vecdyadright(lambda l, r: list(map(list, itertools.combinations(l, r))))),
     "ė":  (2, lambda x, y: int(x in force_list(y))),
     "ẹ":  (2, lambda x, y: int(x not in force_list(y))),
+    "f":  (2, lambda x, y: [e for e in force_list(x) if e     in y]),
+    "ḟ":  (2, lambda x, y: [e for e in force_list(x) if e not in y]),
     "g":  (2, vecdyadboth(GCD)),
     "ḣ":  (2, vecdyadright(lambda x, y: x[:y])),
     "ḥ":  (2, vecdyadright(lambda x, y: x[:-y])),
@@ -682,6 +694,8 @@ functions = {
     "l":  (2, vecdyadboth(LCM)),
     "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
     "ṁ":  (2, mold),
+    "p":  (2, lambda x, y: list(map(list, itertools.product(force_list(x), force_list(y))))),
+    "ṗ":  (2, lambda x, y: list(map(list, itertools.product(*([force_list(x)] * y))))),
     "r":  (2, vecdyadboth(lambda l, r: list(range(l, r + (-1 if r < l else 1), -1 if r < l else 1)))),
     "ṙ":  (2, vecdyadboth(lambda l, r: list(range(l, r, -1 if r < l else 1)))),
     "ṛ":  (2, vecdyadboth(lambda l, r: (lambda d: list(range(l + d, r, d)))(-1 if r < l else 1))),
@@ -691,6 +705,7 @@ functions = {
     "ṣ":  (2, listsplit),
     "ṫ":  (2, vecdyadright(lambda x, y: x[y - 1:])),
     "ṭ":  (2, vecdyadright(lambda x, y: x[-y:])),
+    "ẋ":  (2, lambda x, y: force_list(x) * y),
     "ẏ":  (2, vecdyadright(flatten)),
     "z":  (2, lambda x, y: list(map(list, zip(*lfill(x, y))))),
     "ż":  (2, lambda x, y: (lambda a, b: [([a[i]] if i < len(a) else []) + ([b[i]] if i < len(b) else []) for i in range(max(len(a), len(b)))])(force_list(x), force_list(y))),
@@ -761,6 +776,8 @@ operators = {
     "¤":  (-1, lambda fs: getnil(fs)),
     "⁺":  (-1, lambda fs: (1, uniquify(fs.pop()))),
     "Ð⁺": (-1, lambda fs: (max(1, fs[-1][0]), keyuniquify(fs.pop()))),
+    "Ðf": (-1, lambda fs: filterer(fs.pop(), 0)),
+    "Ðḟ": (-1, lambda fs: filterer(fs.pop(), 1)),
     "ÐU": (-1, lambda fs: (1, eqcollapser(fs.pop()))),
     "ÐỤ": (-1, lambda fs: (max(1, fs[-1][0]), keyeqcollapser(fs.pop()))),
     "¦":  (-1, lambda fs: applier(fs.pop(), fs.pop())),
