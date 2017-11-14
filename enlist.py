@@ -25,6 +25,11 @@ def try_eval(string):
     except:
         return list(string)
 
+def make_list_str(obj):
+    if hasattr(obj, "__iter__") and not isinstance(obj, str):
+        return obj
+    return [obj]
+
 def force_list(obj):
     if hasattr(obj, "__iter__"):
         return obj
@@ -52,7 +57,7 @@ def rfill(matrix, item):
     return [[item] * (length - len(row)) + row for row in matrix]
 
 def depth(obj):
-    if hasattr(obj, "__iter__"):
+    if hasattr(obj, "__iter__") and not isinstance(obj, str):
         if len(obj) == 0: return 1
         return max(map(depth, obj)) + 1
     return 0
@@ -279,7 +284,7 @@ def force_matrix(array):
 
 def flatten(array, layer = -1):
     if layer == 0 or depth(array) <= 1: return array
-    return flatten(sum(map(force_list, array), []), layer - 1)
+    return flatten(sum(map(make_list_str, map(force_list, array)), []), layer - 1)
 
 def ternary(c, f, t):
     # if f[0] != t[0]: raise RuntimeError("Ternary clauses must have same arity")
@@ -579,7 +584,7 @@ rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹ�
 # Unused Characters for single character functions/operators
 
 # ¡¢£      µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()
-#   BC    HI KLMN       V XY       abcd f hi k m o q  tuvwxy
+#   BC    HI KLMN       V          abcd f hi k m o q  tuvwxy
 #                                           λẠ  Ẹ ỊḲ Ṃ  Ṛ  ỤṾẈỴẒȦḂ
 # Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ  ġ ŀ  ȯ    ẇ 
 
@@ -663,6 +668,7 @@ functions = {
     "W":  (1, lambda x: [x]),
     "Ẇ":  (1, sublists),
     "X":  (1, lambda x: random.choice(x) if type(x) == list else sympy.Integer(random.randrange(1, x + 1)) if x % 1 == 0 else sympy.Rational(random.random() * x)),
+    "Y":  (1, lambda x: join(x, "\n")),
     "Ẏ":  (1, lambda x: flatten(x, 1)),
     "Z":  (1, vecmonad(intpartitions)),
     "∆":  (1, vecmonad(lambda x: [q - p for p, q in zip(x, x[1:])], maxlayer_offset = 1)),
