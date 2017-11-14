@@ -63,7 +63,10 @@ def depth(obj):
     return 0
 
 def last_input():
-    return python_eval(sys.argv[-1] if len(sys.argv) > 3 else input())
+    try:
+        return try_eval(sys.argv[-1] if len(sys.argv) > 3 else input())
+    except:
+        return 0
 
 def Operator(argnum):
     class Inner:
@@ -264,6 +267,18 @@ def nfind(amount, condition):
             current += 1
         return found
     return (max(1, condition[0]), inner)
+
+def _find(amount, condition):
+    def inner(*args):
+        matches = nileval(amount)
+        found = []
+        while len(found) < matches:
+            current = args[0]
+            while current in found or not (condition[0] == 0 and nileval(condition)) or (condition[0] == 1 and moneval(condition, current)) or (condition[0] == 2 and dydeval(condition, current, len(found))):
+                current += 1
+                print(len(found), current)
+        return found
+    return (1, inner)
 
 def rotater(scale, layer):
     def inner(array, distance):
@@ -583,10 +598,10 @@ rcodepage += """ĊḊĖḞĠḢİĿṀṄȮṖṘṠṪẆẊẎŻạḅḍẹ�
 
 # Unused Characters for single character functions/operators
 
-# ¡¢£      µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()
-#   BC    HI KLMN       V          abcd f hi k m o q  tuvwxy
+# ¡¢£      µ   ÆÇÐÑ ØŒ ßæçð  ñ øœþ       '()                      
+#   BC    HI KLMN       V          abcd f hi k m o q  tuvwxy      
 #                                           λẠ  Ẹ ỊḲ Ṃ  Ṛ  ỤṾẈỴẒȦḂ
-# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ  ġ ŀ  ȯ    ẇ 
+# Ċ ĖḞĠ  ĿṀ Ȯ Ṙ   Ẋ Żạḅḍ  ịḳḷṃ ọ   ụṿẉỵ ȧ  ḋ  ġ ŀ  ȯ    ẇ         
 
 functions = {
     "_":  (2, vecdyadboth(operator.sub)),
@@ -796,6 +811,7 @@ operators = {
     "ÐU": (-1, lambda fs: (1, eqcollapser(fs.pop()))),
     "ÐỤ": (-1, lambda fs: (max(1, fs[-1][0]), keyeqcollapser(fs.pop()))),
     "¦":  (-1, lambda fs: applier(fs.pop(), fs.pop())),
+    "Ð#": (-1, lambda fs: _find(fs.pop() if fs[-1][0] == 0 else (0, last_input), fs.pop())),
 }
 
 overloads = ["•", "§", "†", "§", "‡", "§"]
