@@ -558,6 +558,14 @@ def group(array):
             results.append([element])
     return results
 
+def convolve(left, right):
+    left, right = range_list(left), range_list(right)
+    result = [0] * (len(left) + len(right) - 1)
+    for i, x in enumerate(left):
+        for j, y in enumerate(right):
+            result[i + j] += x * y
+    return result
+
 ucodepage  = """!¢£¤¥¦©¬®hπ?€ÆÇÐÑ×ØŒÞßæçðıȷñ÷øœþ ¡"#$%&,()*+’-.\0123456789:;<=>¿"""
 ucodepage += """@ABCDEFGHIJKLMNOPQRSTUVWXYZ[/]v_`abcdefgµijklmuopqrstn^wxyz{|}~¶"""
 ucodepage += """°¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾±≤≠≥√·∆₱•†‡§⍺⍵ŝσ←↓→↑↔↕↙↘↶↷↻λȦḂḊĖḢİḲĿṀṄȮỤṘṠṪṾẆẎŻẠḄ"""
@@ -693,7 +701,7 @@ functions = {
     "j":  (2, join),
     "l":  (2, vecdyadboth(LCM)),
     "m":  (2, vecdyadright(lambda l, r: digit_lister(lambda k: k[::r] if r else k + k[::-1])(l))),
-    "ṁ":  (2, mold),
+    "ṁ":  (2, lambda x, y: mold(x, range_list(y))),
     "p":  (2, lambda x, y: list(map(list, itertools.product(force_list(x), force_list(y))))),
     "ṗ":  (2, lambda x, y: list(map(list, itertools.product(*([force_list(x)] * y))))),
     "r":  (2, vecdyadboth(lambda l, r: list(range(l, r + (-1 if r < l else 1), -1 if r < l else 1)))),
@@ -753,6 +761,7 @@ functions = {
     "ØX": (0, lambda: sympy.Rational(random.random())),
     "œḷ": (2, lambda x, y: x),
     "œṛ": (2, lambda x, y: y),
+    "æc": (2, convolve),
 }
 
 operators = {
