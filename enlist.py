@@ -1107,6 +1107,6 @@ def enlist_output(argument, end = "\n", transform = stringify):
 
 if __name__ == "__main__":
     args = list(map(try_eval, sys.argv[1:]))
-    for i in range(len(args)):
-        functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, lambda: args[i])
+    for i, e in enumerate(args):
+        functions["³⁴⁵⁶⁷⁸⁹"[i]] = (0, (lambda v: lambda: v)(e))
     enlist_output(enlist_eval(input(), args))
