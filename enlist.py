@@ -1070,9 +1070,9 @@ def evaluate(links, arguments):
     links = links or [[]]
     link = links[-1]
     if len(arguments) >= 1:
-        functions["⍺"] = (0, lambda: arguments[0])
+        functions["⍺"] = (0, (lambda v: lambda: v)(arguments[0]))
     if len(arguments) >= 2:
-        functions["⍵"] = (0, lambda: arguments[1])
+        functions["⍵"] = (0, (lambda v: lambda: v)(arguments[1]))
     # TODO other argument getters
     if len(arguments) >= 2:
         return dydeval(link, arguments[0], arguments[1], links = links, index = len(links) - 1)
